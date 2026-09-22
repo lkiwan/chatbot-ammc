@@ -3,3 +3,5 @@ pypdf
 pdfplumber
 chromadb
 python-dotenv
+fastapi
+uvicorn[standard]

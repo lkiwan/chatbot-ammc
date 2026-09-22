@@ -18,11 +18,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Chatbot RAG sur rapport financier (Groq).")
     parser.add_argument(
         "command", nargs="?", default="chat",
-        choices=["ingest", "index", "chat", "all"],
-        help="chat (defaut) | ingest: PDF -> CSV + chunks | index: index vectoriel | all: tout",
+        choices=["ingest", "index", "chat", "serve", "all"],
+        help="chat (defaut) | ingest: PDF -> CSV + chunks | index: index vectoriel | serve: plateforme web | all: tout",
     )
     parser.add_argument("--force", action="store_true", help="Reconstruit l'index existant")
+    parser.add_argument("--host", default="127.0.0.1", help="Hote pour serve")
+    parser.add_argument("--port", type=int, default=8000, help="Port pour serve")
     args = parser.parse_args()
+
+    if args.command == "serve":
+        serve(host=args.host, port=args.port)
+        return
 
     if args.command in ("ingest", "all"):
         extract()
@@ -31,6 +37,18 @@ def main() -> None:
     if args.command in ("chat", "all"):
         threading.Thread(target=warm_cache, daemon=True).start()
         run_chat()
+
+
+def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
+    import uvicorn
+
+    dist = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
+    if not os.path.isdir(dist):
+        sys.exit(
+            "Interface web non construite. Dans frontend/ : npm install puis npm run build."
+        )
+    print(f"Plateforme web sur http://{host}:{port}")
+    uvicorn.run("api.main:app", host=host, port=port, log_level="info")
 
 
 def run_chat() -> None:
