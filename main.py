@@ -9,17 +9,16 @@ from dotenv import load_dotenv
 
 from build_index import build_index
 from chat import answer_stream, warm_cache
-from extract import extract
 
 
 def main() -> None:
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="Chatbot RAG sur rapport financier (Groq).")
+    parser = argparse.ArgumentParser(description="Chatbot RAG multi-rapports (Groq).")
     parser.add_argument(
         "command", nargs="?", default="chat",
         choices=["ingest", "index", "chat", "serve", "all"],
-        help="chat (defaut) | ingest: PDF -> CSV + chunks | index: index vectoriel | serve: plateforme web | all: tout",
+        help="chat (defaut) | ingest: extrait+indexe les nouveaux PDF de data/pdfs | index: reconstruit tout | serve: plateforme web | all: index puis chat",
     )
     parser.add_argument("--force", action="store_true", help="Reconstruit l'index existant")
     parser.add_argument("--host", default="127.0.0.1", help="Hote pour serve")
@@ -30,9 +29,7 @@ def main() -> None:
         serve(host=args.host, port=args.port)
         return
 
-    if args.command in ("ingest", "all"):
-        extract()
-    if args.command in ("index", "all"):
+    if args.command in ("ingest", "index", "all"):
         build_index(force=args.force)
     if args.command in ("chat", "all"):
         threading.Thread(target=warm_cache, daemon=True).start()
@@ -48,6 +45,7 @@ def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
             "Interface web non construite. Dans frontend/ : npm install puis npm run build."
         )
     print(f"Plateforme web sur http://{host}:{port}")
+    threading.Thread(target=warm_cache, daemon=True).start()
     uvicorn.run("api.main:app", host=host, port=port, log_level="info")
 
 

@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
+import { niceName } from "../format.js";
 import { sendChat } from "../api.js";
 
 const SUGGESTIONS = [
   "Quel est le résultat net part du groupe ?",
-  "Quel est le total du bilan au 30 juin 2026 ?",
+  "Quel est le total du bilan ?",
   "Quels sont les principaux actionnaires ?",
   "Quel est le coefficient d'exploitation ?"
 ];
@@ -19,7 +20,7 @@ function useAutoGrow() {
   return [ref, auto];
 }
 
-export default function ChatPanel() {
+export default function ChatPanel({ rapport = null }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,9 +28,20 @@ export default function ChatPanel() {
   const [textRef, autoGrow] = useAutoGrow();
   const bottomRef = useRef(null);
 
+  const scope = rapport ? niceName(rapport) : "Tous les rapports";
+  const scopeHint = rapport
+    ? "Le rapport est déposé. Les questions portent sur l'index de cette base."
+    : "Les questions portent sur l'ensemble des rapports en base.";
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
+
+  const newSession = () => {
+    setMessages([]);
+    setError(null);
+    setInput("");
+  };
 
   const submit = async (text) => {
     const question = (text ?? input).trim();
@@ -43,8 +55,11 @@ export default function ChatPanel() {
     setMessages((m) => [...m, { role: "user", content: question }]);
     setBusy(true);
     try {
-      const reply = await sendChat(question, history);
-      setMessages((m) => [...m, { role: "assistant", content: reply.content, sources: reply.sources }]);
+      const reply = await sendChat(question, history, rapport);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: reply.content, sources: reply.sources }
+      ]);
     } catch (e) {
       setError("Le modèle n'a pas répondu. Réessayez dans un instant.");
     } finally {
@@ -56,19 +71,24 @@ export default function ChatPanel() {
     <div className="chat">
       <div className="chat-head">
         <div>
-          <p className="chat-title">Analyste — édition H1 2026</p>
-          <p className="chat-sub">Rapport Attijariwafa bank · lecteur sourcé</p>
+          <p className="chat-title">Analyste — {scope}</p>
+          <p className="chat-sub">{scopeHint}</p>
         </div>
-        <span className="chat-status">En ligne</span>
+        <div className="chat-head-actions">
+          <span className="chat-status">En ligne</span>
+          <button className="chat-new" onClick={newSession}>
+            Nouvelle session
+          </button>
+        </div>
       </div>
 
       <div className="chat-body">
         {messages.length === 0 && !busy && (
           <div className="chat-empty">
-            <p className="chat-empty-h">Que voulez-vous savoir ?</p>
+            <p className="chat-empty-h">Session sur {scope}</p>
             <p className="chat-empty-s">
-              La réponse viendra du rapport, accompagnée des pages où se trouvent les
-              chiffres. Les questions posées ici nourrissent le fil de la discussion.
+              Les réponses viennent du(des) rapport(s) sélectionné(s), accompagnées du
+              rapport et des pages. Chaque réponse est sourcée.
             </p>
             <div className="suggestions">
               {SUGGESTIONS.map((s) => (
@@ -84,9 +104,7 @@ export default function ChatPanel() {
           <div key={i} className={`msg ${m.role}`}>
             <div className="bubble">{m.content}</div>
             {m.role === "assistant" && m.sources && m.sources.length > 0 && (
-              <div className="msg-sources">
-                Pages : {m.sources.join(", ")}
-              </div>
+              <div className="msg-sources">{m.sources.join(", ")}</div>
             )}
           </div>
         ))}
@@ -98,7 +116,7 @@ export default function ChatPanel() {
               <span />
               <span />
             </div>
-            <div className="msg-sources">Consultation de l'index…</div>
+            <div className="msg-sources">Consultation de l’index…</div>
           </div>
         )}
 

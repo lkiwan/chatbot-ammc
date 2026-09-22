@@ -145,9 +145,12 @@ body {
 /* ---------- Hero ---------- */
 
 .hero {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 88px 24px 40px;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 48px;
+  align-items: center;
+  padding-top: 56px;
+  padding-bottom: 24px;
 }
 
 .eyebrow {
@@ -162,8 +165,8 @@ body {
 .hero h1 {
   font-family: var(--serif);
   font-weight: 500;
-  font-size: clamp(44px, 8vw, 84px);
-  line-height: 0.98;
+  font-size: clamp(38px, 5.4vw, 62px);
+  line-height: 1.02;
   letter-spacing: -0.02em;
   margin: 0;
 }
@@ -175,16 +178,17 @@ body {
 }
 
 .hero-intro {
-  max-width: 560px;
-  margin: 28px 0 0;
+  max-width: 520px;
+  margin: 20px 0 0;
   color: var(--ink-soft);
-  font-size: 17px;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 .hero-actions {
   display: flex;
   gap: 12px;
-  margin-top: 34px;
+  margin-top: 26px;
   flex-wrap: wrap;
 }
 
@@ -236,21 +240,140 @@ body {
   flex-wrap: wrap;
   gap: 8px 24px;
   list-style: none;
-  margin: 44px 0 0;
-  padding: 0;
+  margin: 30px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
 }
 
 .hero-facts li {
   font-size: 13px;
   color: var(--muted);
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
+}
+
+/* Guide : les 3 étapes */
+
+.hero-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.step-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px 16px;
+}
+
+.step-n {
+  font-family: var(--serif);
+  font-size: 22px;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.step-t {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.step-d {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* ---------- Instruments ---------- */
+
+.instruments {
+  padding: 20px 24px 4px;
+}
+
+.instruments-head h2 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(22px, 2.8vw, 30px);
+  letter-spacing: -0.015em;
+  margin: 0 0 8px;
+}
+
+.instruments-sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+.instrument-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.instrument {
+  text-align: left;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  font-family: var(--sans);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.instrument:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.instrument.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.instrument-name {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.instrument-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.instrument.active .instrument-meta {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.instrument-cta {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 4px;
+}
+
+.instrument.active .instrument-cta {
+  color: #fff;
 }
 
 /* ---------- Metrics ---------- */
 
 .metrics {
-  padding-bottom: 20px;
+  padding: 8px 24px 20px;
 }
 
 .metrics-grid {
@@ -322,10 +445,10 @@ body {
 .tabs {
   display: flex;
   gap: 4px;
-  padding-top: 28px;
-  padding-bottom: 28px;
+  padding-top: 20px;
+  padding-bottom: 24px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .tab {
@@ -351,20 +474,27 @@ body {
 /* ---------- Sections ---------- */
 
 .section-head {
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
 
 .section-head h2 {
   font-family: var(--serif);
   font-weight: 500;
-  font-size: clamp(28px, 4vw, 40px);
+  font-size: clamp(24px, 3vw, 32px);
   letter-spacing: -0.015em;
-  line-height: 1.1;
+  line-height: 1.12;
   margin: 0;
 }
 
+.section-sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+  max-width: 560px;
+}
+
 .section {
-  margin-bottom: 80px;
+  margin-bottom: 56px;
 }
 
 /* ---------- Reveal animation ---------- */
@@ -427,6 +557,33 @@ body {
   height: 7px;
   border-radius: 50%;
   background: #1f8b4c;
+}
+
+.chat-head {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chat-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-new {
+  font: 600 12.5px var(--sans);
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.chat-new:hover {
+  border-color: var(--ink);
+  background: var(--paper);
 }
 
 .chat-body {
@@ -649,6 +806,30 @@ body {
   color: var(--muted);
 }
 
+.reindex {
+  padding: 10px 16px;
+}
+
+.ingest-msg {
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.table-report {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: auto;
+}
+
 .table-list {
   display: grid;
   gap: 16px;
@@ -664,7 +845,7 @@ body {
 .table-card-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
 }
@@ -799,9 +980,21 @@ code {
 
 /* ---------- Responsive ---------- */
 
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding-top: 44px;
+  }
+
+  .hero-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 760px) {
   .hero {
-    padding-top: 52px;
+    padding-top: 36px;
   }
 
   .edition {

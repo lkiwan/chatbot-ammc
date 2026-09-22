@@ -4,7 +4,7 @@ import unicodedata
 import chromadb
 from openai import OpenAI
 
-from config import (CHROMA_DIR, CHUNKS_PATH, COLLECTION, HISTORY_LIMIT,
+from config import (CHROMA_DIR, CHUNKS_DIR, GLOBAL_COLLECTION, HISTORY_LIMIT,
                     LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, TOP_K)
 
 STOP = {"est", "les", "des", "une", "dans", "pour", "avec", "entre", "quel", "quelle",
@@ -25,14 +25,24 @@ _corpus: list[dict] | None = None
 def corpus() -> list[dict]:
     global _corpus
     if _corpus is None:
-        _corpus = json.loads(CHUNKS_PATH.read_text(encoding="utf-8"))
+        merged: list[dict] = []
+        for f in sorted(CHUNKS_DIR.glob("*.json")):
+            for c in json.loads(f.read_text(encoding="utf-8")):
+                c.setdefault("report", f.stem)
+                merged.append(c)
+        _corpus = merged
     return _corpus
+
+
+def invalidate() -> None:
+    global _corpus
+    _corpus = None
 
 
 def load_store() -> chromadb.Collection | None:
     client = chromadb.PersistentClient(path=str(CHROMA_DIR))
     try:
-        return client.get_collection(COLLECTION)
+        return client.get_collection(GLOBAL_COLLECTION)
     except Exception:
         return None
 
@@ -72,12 +82,21 @@ def _keywords(question: str) -> list[tuple[str, float]]:
     return [(t, max(1.0, len(t) / 3.0)) for t in tokens[:5]]
 
 
-def retrieve(collection: chromadb.Collection, question: str, k: int = TOP_K) -> list[dict]:
+def retrieve(
+    collection: chromadb.Collection,
+    question: str,
+    k: int = TOP_K,
+    rapport: str | None = None,
+) -> list[dict]:
     queries = [question] + _expand(question)
 
     vector_rank: dict[str, float] = {}
     for q in queries:
-        res = collection.query(query_texts=[q], n_results=k)
+        res = collection.query(
+            query_texts=[q],
+            n_results=k,
+            where={"report": rapport} if rapport else None,
+        )
         for ident, dist in zip(res["ids"][0], res["distances"][0]):
             if ident not in vector_rank or dist < vector_rank[ident]:
                 vector_rank[ident] = dist
@@ -85,15 +104,17 @@ def retrieve(collection: chromadb.Collection, question: str, k: int = TOP_K) -> 
     keywords = _keywords(question)
     boosted: list[tuple[float, float, dict]] = []
     for c in corpus():
+        if rapport and c.get("report") != rapport:
+            continue
         score = _keyword_hits(c["text"], keywords)
         if score > 0:
-            ident = str(c["id"])
+            ident = f"{c.get('report', '?')}::{c['id']}"
             boosted.append((score, vector_rank.get(ident, 1e9), c))
 
     boosted.sort(key=lambda x: (-x[0], x[1]))
     ranked: list[dict] = [c for _, _, c in boosted[:k]]
 
-    seen = {str(c["id"]) for c in ranked}
+    seen = {f"{c.get('report', '?')}::{c['id']}" for c in ranked}
     for ident in sorted(vector_rank, key=lambda i: vector_rank[i]):
         if len(ranked) >= k:
             break
@@ -104,10 +125,16 @@ def retrieve(collection: chromadb.Collection, question: str, k: int = TOP_K) -> 
             doc = collection.get(ids=[ident], include=["documents"])["documents"][0]
         except Exception:
             continue
-        ranked.append({"id": ident, "text": doc, "page": meta.get("page", "?")})
+        ranked.append(
+            {
+                "text": doc,
+                "page": meta.get("page", "?"),
+                "report": meta.get("report", "?"),
+            }
+        )
         seen.add(ident)
 
-    return [{"text": c["text"], "page": c["page"]} for c in ranked]
+    return [{"text": c["text"], "page": c["page"], "report": c.get("report", "?")} for c in ranked]
 
 
 def build_messages(question: str, hits: list[dict], history: list[dict]) -> list[dict]:
@@ -124,27 +151,27 @@ def build_messages(question: str, hits: list[dict], history: list[dict]) -> list
     return messages
 
 
-def answer(question: str, history: list[dict]) -> tuple[str, list[str]]:
+def answer(question: str, history: list[dict], rapport: str | None = None) -> tuple[str, list[str]]:
     full, sources = "", []
-    for chunk, src in answer_stream(question, history):
+    for chunk, src in answer_stream(question, history, rapport):
         full += chunk
         if src:
             sources = src
     return full, sources
 
 
-def answer_stream(question: str, history: list[dict]):
+def answer_stream(question: str, history: list[dict], rapport: str | None = None):
     collection = load_store()
     if collection is None:
-        yield ("Index introuvable. Lancez d'abord : python main.py ingest", [])
+        yield ("Index introuvable. Lancez d'abord : python main.py index", [])
         return
 
-    hits = retrieve(collection, question)
+    hits = retrieve(collection, question, rapport=rapport)
     if not hits:
         yield ("Aucun passage pertinent trouve dans le rapport.", [])
         return
 
-    sources = sorted({str(h["page"]) for h in hits})
+    sources = sorted({f"{h['report']} · p.{h['page']}" for h in hits})
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL, timeout=180.0)
     messages = build_messages(question, hits, history)
     try:
@@ -168,7 +195,9 @@ def _dedup(text: str) -> str:
 
 
 def _offline_answer(hits: list[dict], exc: Exception) -> str:
-    lines = [f"p.{h['page']} - {h['text'][:500]}" for h in hits[:3]]
+    lines = [
+        f"{h.get('report', '?')} · p.{h['page']} - {h['text'][:500]}" for h in hits[:3]
+    ]
     return (
         f"[API LLM injoignable : {type(exc).__name__}] Donnees repondues depuis l'index local.\n"
         + "\n".join(lines)

@@ -8,15 +8,16 @@ async function request(path, options) {
 }
 
 export const fetchHealth = () => request("/health");
-export const fetchReport = () => request("/report");
+export const fetchReports = () => request("/reports");
 export const fetchMetrics = () => request("/metrics");
 export const fetchTables = () => request("/tables");
+export const reingest = () => request("/ingest", { method: "POST" });
 
-export async function sendChat(message, history) {
+export async function sendChat(message, history, rapport) {
   const data = await request("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history })
+    body: JSON.stringify({ message, history, rapport })
   });
   return data;
 }

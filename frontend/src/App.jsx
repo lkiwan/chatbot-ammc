@@ -1,51 +1,90 @@
 import React, { useEffect, useRef, useState } from "react";
-import { fetchHealth, fetchMetrics, fetchReport } from "./api.js";
+import { fetchHealth, fetchMetrics, fetchReports } from "./api.js";
 import Metrics from "./components/Metrics.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import DataExplorer from "./components/DataExplorer.jsx";
+import ReportPicker from "./components/ReportPicker.jsx";
 import About from "./components/About.jsx";
 
-const SECTIONS = ["analyse", "donnees", "methode"];
+const QUICK_STEPS = [
+  [
+    "1",
+    "Déposez un rapport",
+    "Ajoutez un PDF de comptes dans data/pdfs/. Il est détecté, extrait et indexé automatiquement."
+  ],
+  [
+    "2",
+    "Sélectionnez-le",
+    "Il apparaît dans « Instruments en base ». Un clic ouvre une session de questions dédiée."
+  ],
+  [
+    "3",
+    "Interrogez-le",
+    "Posez votre question : la réponse cite le rapport et la page de chaque chiffre."
+  ]
+];
 
 export default function App() {
-  const [report, setReport] = useState(null);
+  const [reports, setReports] = useState(null);
   const [metrics, setMetrics] = useState([]);
   const [apiUp, setApiUp] = useState(null);
   const [tab, setTab] = useState("analyse");
+  const [activeRapport, setActiveRapport] = useState(null);
   const sectionRefs = useRef({});
 
   useEffect(() => {
     fetchHealth()
       .then((h) => setApiUp(h.index))
       .catch(() => setApiUp(false));
-    fetchReport()
-      .then(setReport)
-      .catch(() => setReport(null));
+    fetchReports()
+      .then(setReports)
+      .catch(() => setReports(null));
     fetchMetrics()
       .then(setMetrics)
       .catch(() => setMetrics([]));
   }, []);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
+    const timer = setInterval(() => {
+      fetchReports().then(setReports).catch(() => {});
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const total = reports?.total || null;
+
+  useEffect(() => {
+    const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) {
             e.target.classList.add("visible");
-            observer.unobserve(e.target);
+            io.unobserve(e.target);
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.08 }
     );
-    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [tab]);
+    document.querySelectorAll(".reveal").forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight - 60) {
+        el.classList.add("visible");
+      } else {
+        io.observe(el);
+      }
+    });
+    return () => io.disconnect();
+  }, [tab, reports, metrics]);
 
   const go = (section) => {
     setTab(section);
     const el = sectionRefs.current[section];
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const selectRapport = (stem) => {
+    setActiveRapport(stem);
+    go("analyse");
   };
 
   return (
@@ -57,7 +96,11 @@ export default function App() {
           <span className="brand-sub">Publications financières</span>
         </div>
         <div className="topbar-meta">
-          {report && <span className="edition">{report.titre}</span>}
+          {total && (
+            <span className="edition">
+              {total.rapports} rapport{total.rapports > 1 ? "s" : ""} en base
+            </span>
+          )}
           <span className={`api-state ${apiUp ? "up" : apiUp === null ? "pending" : "down"}`}>
             <span className="dot" />
             {apiUp ? "Index prêt" : apiUp === null ? "Connexion…" : "Hors ligne"}
@@ -65,33 +108,53 @@ export default function App() {
         </div>
       </header>
 
-      <section className="hero">
-        <p className="eyebrow">Semestre au 30 juin 2026 · Attijariwafa bank SA</p>
-        <h1>
-          Les résultats<br />
-          <em>qu’on interroge.</em>
-        </h1>
-        <p className="hero-intro">
-          Une interface pour lire, interroger et vérifier les états financiers publiés
-          par la banque. Chaque réponse renvoie aux pages du rapport — rien n’est inventé,
-          tout est sourcé.
-        </p>
-        <div className="hero-actions">
-          <button className="btn btn-primary" onClick={() => go("analyse")}>
-            Poser une question
-          </button>
-          <button className="btn btn-ghost" onClick={() => go("donnees")}>
-            Explorer les tableaux
-          </button>
+      <section className="hero wrap">
+        <div className="hero-text">
+          <p className="eyebrow">Publications financières · arrêtés 2025–2026</p>
+          <h1>
+            Lisez, interrogez, <em>vérifiez.</em>
+          </h1>
+          <p className="hero-intro">
+            Chaque rapport déposé dans <code>data/pdfs/</code> est lu automatiquement.
+            Posez une question : la réponse est chiffrée et renvoie aux pages du document.
+          </p>
+          <div className="hero-actions">
+            <button className="btn btn-primary" onClick={() => go("analyse")}>
+              Poser une question
+            </button>
+            <button className="btn btn-ghost" onClick={() => go("donnees")}>
+              Voir les tableaux
+            </button>
+          </div>
+          {total && (
+            <ul className="hero-facts">
+              <li>{total.rapports} instrument{total.rapports > 1 ? "s" : ""}</li>
+              <li>{total.pages} pages analysées</li>
+              <li>{total.chunks} extraits indexés</li>
+              <li>{total.csv_rows} lignes structurées</li>
+            </ul>
+          )}
         </div>
-        {report && (
-          <ul className="hero-facts">
-            <li>{report.pages} pages analysées</li>
-            <li>{report.chunks} extraits indexés</li>
-            <li>{report.csv_rows} lignes structurées</li>
-          </ul>
-        )}
+
+        <ol className="hero-steps">
+          {QUICK_STEPS.map(([n, t, d]) => (
+            <li key={n} className="step-card reveal">
+              <span className="step-n">{n}</span>
+              <p className="step-t">{t}</p>
+              <p className="step-d">{d}</p>
+            </li>
+          ))}
+        </ol>
       </section>
+
+      {reports && (
+        <ReportPicker
+          rapports={reports.rapports}
+          active={activeRapport}
+          onSelect={selectRapport}
+          total={reports.total}
+        />
+      )}
 
       {metrics.length > 0 && (
         <section className="metrics wrap reveal" ref={(el) => (sectionRefs.current.chiffres = el)}>
@@ -125,9 +188,13 @@ export default function App() {
             <div>
               <p className="eyebrow">Partie conversationnelle</p>
               <h2>Un analyste qui répond avec les chiffres.</h2>
+              <p className="section-sub">
+                Une question, une réponse sourcée. Chaque réponse affiche le rapport et
+                la page des chiffres utilisés.
+              </p>
             </div>
           </div>
-          <ChatPanel />
+          <ChatPanel key={activeRapport ?? "all"} rapport={activeRapport} />
         </section>
 
         <section
@@ -137,11 +204,17 @@ export default function App() {
         >
           <div className="section-head">
             <div>
-              <p className="eyebrow">Extraction millimétrique</p>
+              <p className="eyebrow">Extraction</p>
               <h2>Les tableaux, tels qu’ils figurent au rapport.</h2>
+              <p className="section-sub">
+                Filtrez par rapport ou par page, ou cherchez un mot dans les cellules.
+              </p>
             </div>
           </div>
-          <DataExplorer />
+          <DataExplorer
+            reportsCount={total?.rapports ?? 0}
+            onRefresh={() => fetchReports().then(setReports)}
+          />
         </section>
 
         <section
@@ -153,6 +226,10 @@ export default function App() {
             <div>
               <p className="eyebrow">Documentation</p>
               <h2>Comment les données sont préparées.</h2>
+              <p className="section-sub">
+                Extraction, indexation, interrogation : le chemin parcouru par chaque
+                rapport.
+              </p>
             </div>
           </div>
           <About />
@@ -162,12 +239,14 @@ export default function App() {
       <footer className="footer">
         <div className="wrap">
           <p>
-            26 pages · 163 extraits indexés · 88 tableaux extraits · modèle{" "}
-            <code>Atria-Dawn-Preview</code>
+            {total
+              ? `${total.pages} pages · ${total.chunks} extraits indexés · ${total.csv_rows} lignes structurées · ${total.rapports} rapport${total.rapports > 1 ? "s" : ""}`
+              : "Chargement…"}{" "}
+            · modèle <code>Atria-Dawn-Preview</code>
           </p>
           <p className="footer-note">
-            Chiffres issus du rapport semestriel 2026 publié par Attijariwafa bank. Les
-            réponses citent les pages du document.
+            Chiffres issus des rapports déposés dans <code>data/pdfs/</code>. Les
+            réponses citent le rapport et les pages du document.
           </p>
         </div>
       </footer>

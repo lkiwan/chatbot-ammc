@@ -1,5 +1,4 @@
 import os
-import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -8,17 +7,14 @@ load_dotenv()
 
 ROOT = Path(__file__).resolve().parent
 
-PDF_PATH = next(ROOT.glob("*.pdf"), None)
-PDF_STEM = (
-    re.sub(r"[^a-z0-9]+", "_", PDF_PATH.stem.lower()).strip("_") if PDF_PATH else "rapport"
-)
-
 DATA_DIR = ROOT / "data"
-CSV_PATH = DATA_DIR / f"{PDF_STEM}.csv"
-CHUNKS_PATH = DATA_DIR / "chunks.json"
+PDFS_DIR = DATA_DIR / "pdfs"
+RAW_DIR = DATA_DIR / "raw"
+CHUNKS_DIR = DATA_DIR / "chunks"
+REPORTS_JSON = DATA_DIR / "reports.json"
 
 CHROMA_DIR = ROOT / ".chroma"
-COLLECTION = PDF_STEM
+GLOBAL_COLLECTION = "rapports"
 
 CHUNK_SIZE = 300
 CHUNK_OVERLAP = 50
