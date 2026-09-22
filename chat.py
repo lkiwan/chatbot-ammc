@@ -16,7 +16,17 @@ SYSTEM = (
     "concrete, uniquement a partir du contexte fourni. "
     "Recopie les montants exactement comme dans le contexte, sans reformater ni reordonner "
     "les chiffres. Cite la page du rapport entre parentheses, ex. (p.8). "
-    "Si l'information n'est pas dans le contexte, dis-le clairement et ne l'invente pas."
+    "Si l'information n'est pas dans le contexte, dis-le clairement et ne l'invente pas.\n"
+    "Mise en forme : utilise du markdown propre, sans syntaxe brute apparente. "
+    "Pour toute serie de donnees repetitives (actionnaires, bilans, provisions, "
+    "participations...), presente-la dans un TABLEAU markdown au format :\n"
+    "| Colonne 1 | Colonne 2 |\n"
+    "| --- | --- |\n"
+    "| valeur | valeur |\n"
+    "Pour un petit nombre d'elements, utilise une liste a puces. "
+    "Un court titre en gras ou en titre de niveau 3 peut introduire chaque partie. "
+    "Chiffres et unites sont conserves tels quels (les montants en milliers de dirhams "
+    "quand ils figurent ainsi dans le rapport)."
 )
 
 _corpus: list[dict] | None = None

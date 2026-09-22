@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { niceName } from "../format.js";
 import { sendChat } from "../api.js";
+import Markdown from "./Markdown.jsx";
 
 const SUGGESTIONS = [
   "Quel est le résultat net part du groupe ?",
@@ -102,7 +103,13 @@ export default function ChatPanel({ rapport = null }) {
 
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
-            <div className="bubble">{m.content}</div>
+            <div className="bubble">
+              {m.role === "assistant" ? (
+                <Markdown>{m.content}</Markdown>
+              ) : (
+                m.content
+              )}
+            </div>
             {m.role === "assistant" && m.sources && m.sources.length > 0 && (
               <div className="msg-sources">{m.sources.join(", ")}</div>
             )}
