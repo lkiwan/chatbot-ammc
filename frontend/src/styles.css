@@ -220,7 +220,7 @@ input, textarea { font-family: var(--sans); }
   flex-shrink: 0;
 }
 .sidebar-search-icon {
-  position: absolute; left: 20px; top: 50%; transform: translateY(-65%);
+  position: absolute; left: 21px; top: calc(50% - 5px); transform: translateY(-50%);
   color: var(--sidebar-muted); pointer-events: none;
 }
 .sidebar-search {
@@ -233,7 +233,7 @@ input, textarea { font-family: var(--sans); }
 .sidebar-search::placeholder { color: var(--sidebar-muted); }
 .sidebar-search:focus { border-color: var(--blue); }
 .sidebar-clear {
-  position: absolute; right: 18px; top: 50%; transform: translateY(-65%);
+  position: absolute; right: 18px; top: calc(50% - 5px); transform: translateY(-50%);
   background: none; border: none; color: var(--sidebar-muted);
   font-size: 16px; line-height: 1; padding: 2px 4px;
   transition: color .15s;

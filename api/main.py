@@ -16,7 +16,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from build_index import build_index, find_pdfs, load_registry, load_scraper_meta
+from build_index import (build_index, find_pdfs, iter_reports, load_registry,
+                         load_scraper_meta)
 from chat import answer, answer_stream_tokens, invalidate, load_store
 from config import CHUNKS_DIR, LLM_MODEL, PDFS_DIR, RAW_DIR
 from extract import sanitize_stem
@@ -77,10 +78,11 @@ DIST = ROOT / "frontend" / "dist"
 
 def _pending_pdfs(stems: set[str]) -> list[Path]:
     pending = []
-    for p in find_pdfs():
-        stem = sanitize_stem(p.name)
+    for r in iter_reports():
+        stem = r["stem"]
         if stem in stems:
             continue
+        p = r["pdf"]
         try:
             mtime = p.stat().st_mtime
         except OSError:
@@ -104,9 +106,14 @@ def _ingest_new() -> int:
                 _FAILED.clear()
             return n
         except Exception as exc:
-            for p in pending:
+            pending_map = {
+                r["stem"]: r["pdf"] for r in iter_reports() if r["pdf"] in pending
+            }
+            if not pending_map:
+                pending_map = {sanitize_stem(p.name): p for p in pending}
+            for stem, p in pending_map.items():
                 try:
-                    _FAILED[sanitize_stem(p.name)] = p.stat().st_mtime
+                    _FAILED[stem] = p.stat().st_mtime
                 except OSError:
                     pass
             print(f"[ingest] {type(exc).__name__}: {exc}")

@@ -16,6 +16,7 @@ REPORTS_JSON = DATA_DIR / "reports.json"
 SCRAPER_META_JSON = DATA_DIR / "scraper_meta.json"
 SCRAPER_MANIFEST = ROOT / "ammc_report_scraper" / "data" / "manifests" / "reports_manifest.csv"
 SCRAPER_COMPANIES = ROOT / "ammc_report_scraper" / "data" / "companies" / "companies.csv"
+SCRAPER_REPORTS_DIR = ROOT / "ammc_report_scraper" / "data" / "reports"
 
 # ── ChromaDB ────────────────────────────────────────────────────────────────
 CHROMA_DIR = ROOT / ".chroma"

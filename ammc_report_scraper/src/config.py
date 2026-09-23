@@ -10,6 +10,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _fix_ca_bundle_env() -> None:
+    """Drop CA-bundle env vars that point to missing files (e.g. a stale
+    PostgreSQL CURL_CA_BUNDLE) so `requests` falls back to certifi."""
+    for var in ("CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
+        value = os.environ.get(var)
+        if value and not Path(value).exists():
+            del os.environ[var]
+
+
+_fix_ca_bundle_env()
+
 _ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_PATH = _ROOT / "config" / "settings.yaml"
 

@@ -72,11 +72,11 @@ def chunk_text(text: str, size: int, overlap: int) -> list[str]:
     return chunks
 
 
-def extract(pdf: Path) -> dict:
+def extract(pdf: Path, stem: str | None = None) -> dict:
     if not pdf.exists():
         raise FileNotFoundError(f"PDF introuvable : {pdf}")
 
-    stem = sanitize_stem(pdf.name)
+    stem = stem or sanitize_stem(pdf.name)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
     out_dir = RAW_DIR / stem

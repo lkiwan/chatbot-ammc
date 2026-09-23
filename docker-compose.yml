@@ -17,6 +17,26 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build: .
+    container_name: ammc_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      DATABASE_URL: postgresql+psycopg2://ammc:ammc_secret@postgres:5432/ammc_finance
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./.chroma:/app/.chroma
+      - ./ammc_report_scraper/data:/app/ammc_report_scraper/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
