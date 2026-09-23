@@ -241,6 +241,24 @@ input, textarea { font-family: var(--sans); }
 .sidebar-clear:hover { color: var(--sidebar-text); }
 
 /* Sector chips */
+.sector-filter-head {
+  padding: 0 10px 8px; flex-shrink: 0;
+}
+.sector-filter-toggle {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: var(--sidebar-2); border: 1px solid var(--sidebar-line);
+  border-radius: var(--radius); color: var(--sidebar-muted);
+  font-size: 12px; font-weight: 600; padding: 6px 12px;
+  cursor: pointer; transition: border-color .15s;
+}
+.sector-filter-toggle:hover { border-color: var(--blue); color: var(--sidebar-text); }
+.sector-filter-toggle.has-filter { border-color: var(--blue); color: var(--blue); }
+.sector-filter-label { font-size: 12px; font-weight: 600; }
+.sector-reset {
+  font-size: 14px; line-height: 1; padding: 0 2px;
+  color: inherit; cursor: pointer;
+}
+.sector-reset:hover { color: var(--sidebar-text); }
 .sector-chips {
   display: flex; flex-wrap: wrap; gap: 5px;
   padding: 0 10px 12px; flex-shrink: 0;
@@ -522,6 +540,64 @@ input, textarea { font-family: var(--sans); }
   color: var(--muted);
   background: var(--bg); border: 1px solid var(--line);
   border-radius: 999px; padding: 3px 9px;
+}
+a.source-tag {
+  text-decoration: none; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+a.source-tag:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 8%, var(--bg));
+}
+
+/* PDFs panel (left of the chat) */
+.chat-main {
+  display: flex; flex: 1; min-height: 0;
+}
+.pdf-panel {
+  display: flex; flex-direction: column;
+  width: 230px; flex-shrink: 0;
+  background: var(--surface-2);
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.pdf-panel.closed { width: auto; border-right: none; }
+.pdf-panel-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 12px; font-weight: 600;
+  padding: 10px 12px; width: 100%;
+}
+.pdf-panel-toggle:hover { color: var(--blue); }
+.pdf-panel-list {
+  flex: 1; overflow-y: auto;
+  padding: 0 8px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pdf-panel-empty {
+  font-size: 12px; color: var(--muted);
+  padding: 6px 4px;
+}
+.pdf-link {
+  display: flex; align-items: center; gap: 8px;
+  text-decoration: none;
+  font-size: 12.5px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  transition: border-color .15s, color .15s;
+}
+.pdf-link:hover { border-color: var(--blue); }
+.pdf-link-year {
+  font-size: 11px; font-weight: 700;
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  border-radius: 6px; padding: 1px 5px;
+  flex-shrink: 0;
+}
+.pdf-link-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 /* Typing indicator */

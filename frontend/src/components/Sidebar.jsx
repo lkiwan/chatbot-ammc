@@ -31,6 +31,7 @@ function sectorColor(sector) {
 export default function Sidebar({ companies, active, onSelect, onYearSelect, activeYear }) {
   const [search, setSearch] = useState("");
   const [activeSector, setActiveSector] = useState("Tous");
+  const [showFilters, setShowFilters] = useState(true);
 
   const sectors = useMemo(() => {
     const set = new Set(companies.map((c) => c.sector || "Autre").filter(Boolean));
@@ -72,17 +73,42 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
         )}
       </div>
 
-      <div className="sector-chips">
-        {sectors.map((s) => (
-          <button
-            key={s}
-            className={`sector-chip ${activeSector === s ? "active" : ""}`}
-            onClick={() => setActiveSector(s)}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="sector-filter-head">
+        <button
+          className={`sector-filter-toggle ${activeSector !== "Tous" ? "has-filter" : ""}`}
+          onClick={() => setShowFilters((v) => !v)}
+          aria-expanded={showFilters}
+        >
+          <span className="sector-filter-label">
+            Filtres
+            {showFilters ? " ▾" : " ▸"}
+          </span>
+          {activeSector !== "Tous" && (
+            <span
+              className="sector-reset"
+              onClick={(e) => { e.stopPropagation(); setActiveSector("Tous"); }}
+              role="button"
+              aria-label="Réinitialiser le filtre"
+            >
+              ×
+            </span>
+          )}
+        </button>
       </div>
+
+      {showFilters && (
+        <div className="sector-chips">
+          {sectors.map((s) => (
+            <button
+              key={s}
+              className={`sector-chip ${activeSector === s ? "active" : ""}`}
+              onClick={() => setActiveSector(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="company-list">
         {filtered.length === 0 && (

@@ -67,6 +67,7 @@ def scraper_meta() -> dict[str, dict]:
                 "sector": (row.get("sector") or "").strip(),
                 "report_id": (row.get("report_id") or "").strip(),
                 "source_url": (row.get("source_url") or "").strip(),
+                "document_url": (row.get("document_url") or "").strip(),
             }
     return meta
 

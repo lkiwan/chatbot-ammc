@@ -12,6 +12,7 @@ export const fetchReports   = () => request("/reports");
 export const fetchMetrics   = () => request("/metrics");
 export const fetchTables    = (rapport) => request(`/tables${rapport ? `?rapport=${encodeURIComponent(rapport)}` : ""}`);
 export const fetchCompanies = () => request("/companies");
+export const fetchPdfs      = () => request("/pdfs");
 export const reingest       = () => request("/ingest", { method: "POST" });
 
 export async function sendChat(message, history, { rapport, company, year, sector } = {}) {

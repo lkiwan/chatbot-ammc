@@ -53,6 +53,10 @@ def _get_scraper_meta() -> dict:
     return _scraper_meta
 
 
+def _report_url(report: str) -> str:
+    return _get_scraper_meta().get(report, {}).get("document_url", "")
+
+
 def corpus() -> list[dict]:
     global _corpus
     if _corpus is None:
@@ -66,6 +70,7 @@ def corpus() -> list[dict]:
                 c.setdefault("company_normalized", m.get("company_normalized", f.stem))
                 c.setdefault("year", m.get("year", ""))
                 c.setdefault("sector", m.get("sector", ""))
+                c.setdefault("url", m.get("document_url", ""))
                 merged.append(c)
         _corpus = merged
     return _corpus
@@ -225,6 +230,7 @@ def retrieve(
                         "company": meta.get("company", "?"),
                         "year": meta.get("year", ""),
                         "sector": meta.get("sector", ""),
+                        "url": _report_url(meta.get("report", "?")),
                     }
         except Exception:
             pass
@@ -272,6 +278,7 @@ def retrieve(
             "company": c.get("company", "?"),
             "year": c.get("year", ""),
             "sector": c.get("sector", ""),
+            "url": c.get("url", _report_url(c.get("report", "?"))),
         }
         for c in ranked
     ]
@@ -322,6 +329,21 @@ def _resolve_year(
     return unique[0] if len(unique) == 1 else unique
 
 
+def _sources(hits: list[dict]) -> list[dict]:
+    by_page: dict[str, dict] = {}
+    for h in hits:
+        label = f"{h.get('company') or h.get('report', '?')}, p.{h['page']}"
+        key = f"{h.get('report', '?')}::{h['page']}"
+        by_page[key] = {
+            "label": label,
+            "page": h["page"],
+            "report": h.get("report", "?"),
+            "year": h.get("year", ""),
+            "url": h.get("url", "") or _report_url(h.get("report", "?")),
+        }
+    return sorted(by_page.values(), key=lambda s: s["label"])
+
+
 def answer_stream(
     question: str,
     history: list[dict],
@@ -342,10 +364,7 @@ def answer_stream(
         yield ("Aucun passage pertinent trouve dans les rapports.", [])
         return
 
-    sources = sorted({
-        f"{h.get('company') or h.get('report', '?')} {h.get('year', '')} · p.{h['page']}"
-        for h in hits
-    })
+    sources = _sources(hits)
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL, timeout=180.0)
     messages = build_messages(question, hits, history)
     try:
@@ -385,10 +404,7 @@ def answer_stream_tokens(
         yield ("Aucun passage pertinent trouvé dans les rapports.", [])
         return
 
-    sources = sorted({
-        f"{h.get('company') or h.get('report', '?')} {h.get('year', '')} · p.{h['page']}"
-        for h in hits
-    })
+    sources = _sources(hits)
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL, timeout=180.0)
     messages = build_messages(question, hits, history)
     try:

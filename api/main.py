@@ -224,6 +224,28 @@ def metrics():
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+@app.get("/api/pdfs")
+def pdfs():
+    meta = load_scraper_meta()
+    indexed = {r["stem"] for r in load_registry()}
+    out = []
+    for stem, m in meta.items():
+        if stem not in indexed:
+            continue
+        if not m.get("document_url"):
+            continue
+        out.append({
+            "stem": stem,
+            "company": m.get("company", stem),
+            "company_normalized": m.get("company_normalized", stem),
+            "year": m.get("year", ""),
+            "sector": m.get("sector", ""),
+            "url": m["document_url"],
+        })
+    out.sort(key=lambda r: (r["company"], int(r["year"] or 0), r["stem"]))
+    return out
+
+
 @app.get("/api/tables")
 def tables(rapport: str | None = None):
     if rapport:
@@ -251,8 +273,11 @@ def chunks(rapport: str | None = None):
 @app.get("/api/companies")
 def companies():
     meta = load_scraper_meta()
+    indexed = {r["stem"] for r in load_registry()}
     seen: dict[str, dict] = {}
     for stem, m in meta.items():
+        if stem not in indexed:
+            continue
         key = m.get("company_normalized", stem)
         if key not in seen:
             seen[key] = {
