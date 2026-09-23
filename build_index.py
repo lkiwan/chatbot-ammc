@@ -4,8 +4,14 @@ from pathlib import Path
 import chromadb
 
 from config import (CHROMA_DIR, CHUNKS_DIR, GLOBAL_COLLECTION, PDFS_DIR,
-                    RAW_DIR, REPORTS_JSON)
+                    RAW_DIR, REPORTS_JSON, SCRAPER_META_JSON)
 from extract import extract, sanitize_stem
+
+
+def load_scraper_meta() -> dict[str, dict]:
+    if SCRAPER_META_JSON.exists():
+        return json.loads(SCRAPER_META_JSON.read_text(encoding="utf-8"))
+    return {}
 
 
 def load_registry() -> list[dict]:
@@ -58,6 +64,7 @@ def build_index(force: bool = False) -> int:
     reg = load_registry()
     known = {r["stem"] for r in reg}
     added = 0
+    scraper_meta = load_scraper_meta()
 
     for pdf in find_pdfs():
         stem = sanitize_stem(pdf.name)
@@ -68,8 +75,18 @@ def build_index(force: bool = False) -> int:
 
         ids = [f"{stem}::{c['id']}" for c in chunks]
         docs = [c["text"] for c in chunks]
+        meta = scraper_meta.get(stem, {})
         metas = [
-            {"report": stem, "page": c["page"], "source": pdf.name} for c in chunks
+            {
+                "report":             stem,
+                "page":               c["page"],
+                "source":             pdf.name,
+                "company":            meta.get("company", stem),
+                "company_normalized": meta.get("company_normalized", stem),
+                "year":               meta.get("year", ""),
+                "sector":             meta.get("sector", ""),
+            }
+            for c in chunks
         ]
         for i in range(0, len(ids), 64):
             collection.upsert(

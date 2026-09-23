@@ -1,38 +1,49 @@
 import React, { useEffect, useRef, useState } from "react";
-import { niceName } from "../format.js";
-import { sendChat } from "../api.js";
+import { sendChatStream } from "../api.js";
 import Markdown from "./Markdown.jsx";
 
-const SUGGESTIONS = [
-  "Quel est le résultat net part du groupe ?",
-  "Quel est le total du bilan ?",
+const SUGGESTIONS_DEFAULT = [
+  "Quel est le résultat net de l'exercice ?",
   "Quels sont les principaux actionnaires ?",
-  "Quel est le coefficient d'exploitation ?"
+  "Quel est le total du bilan ?",
+  "Quelle est la stratégie de développement ?",
+];
+
+const SUGGESTIONS_BANK = [
+  "Quel est le produit net bancaire ?",
+  "Quels sont les principaux actionnaires ?",
+  "Quel est le coefficient d'exploitation ?",
+  "Quelles sont les perspectives de croissance ?",
 ];
 
 function useAutoGrow() {
   const ref = useRef(null);
-  const auto = () => {
+  const grow = () => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 140) + "px";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
-  return [ref, auto];
+  return [ref, grow];
 }
 
-export default function ChatPanel({ rapport = null }) {
+export default function ChatPanel({ company, companyName, year, sector }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [textRef, autoGrow] = useAutoGrow();
+  const [textRef, grow] = useAutoGrow();
   const bottomRef = useRef(null);
+  const streamIdxRef = useRef(null);
 
-  const scope = rapport ? niceName(rapport) : "Tous les rapports";
-  const scopeHint = rapport
-    ? "Le rapport est déposé. Les questions portent sur l'index de cette base."
-    : "Les questions portent sur l'ensemble des rapports en base.";
+  const isBank = sector?.toLowerCase().includes("banque") || sector?.toLowerCase().includes("assur");
+  const suggestions = isBank ? SUGGESTIONS_BANK : SUGGESTIONS_DEFAULT;
+
+  useEffect(() => {
+    setMessages([]);
+    setError(null);
+    setInput("");
+  }, [company, year]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,36 +59,76 @@ export default function ChatPanel({ rapport = null }) {
     const question = (text ?? input).trim();
     if (!question || busy) return;
     setInput("");
+    if (textRef.current) textRef.current.style.height = "auto";
     setError(null);
+
     const history = messages
       .filter((m) => m.role !== "system")
       .slice(-8)
       .map(({ role, content }) => ({ role, content }));
-    setMessages((m) => [...m, { role: "user", content: question }]);
+
     setBusy(true);
+    setMessages((m) => {
+      const next = [...m, { role: "user", content: question }, { role: "assistant", content: "", sources: [] }];
+      streamIdxRef.current = next.length - 1;
+      return next;
+    });
+
     try {
-      const reply = await sendChat(question, history, rapport);
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", content: reply.content, sources: reply.sources }
-      ]);
-    } catch (e) {
+      await sendChatStream(
+        question,
+        history,
+        { company: company || null, year: year ? String(year) : null, sector: sector || null },
+        {
+          onToken: (token) => {
+            const idx = streamIdxRef.current;
+            setMessages((m) => {
+              const next = [...m];
+              next[idx] = { ...next[idx], content: next[idx].content + token };
+              return next;
+            });
+          },
+          onDone: ({ sources }) => {
+            const idx = streamIdxRef.current;
+            setMessages((m) => {
+              const next = [...m];
+              next[idx] = { ...next[idx], sources };
+              return next;
+            });
+          },
+        }
+      );
+    } catch {
       setError("Le modèle n'a pas répondu. Réessayez dans un instant.");
+      setMessages((m) => m.filter((_, i) => i !== streamIdxRef.current));
     } finally {
       setBusy(false);
     }
   };
 
+  const scopeLabel = companyName
+    ? [companyName, year].filter(Boolean).join(" · ")
+    : "Tous les rapports";
+
   return (
     <div className="chat">
       <div className="chat-head">
-        <div>
-          <p className="chat-title">Analyste — {scope}</p>
-          <p className="chat-sub">{scopeHint}</p>
+        <div className="chat-head-left">
+          <div className="chat-scope-badge">
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M5.5 8l2 2 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {scopeLabel}
+          </div>
+          {sector && <span className="chat-sector">{sector}</span>}
         </div>
-        <div className="chat-head-actions">
-          <span className="chat-status">En ligne</span>
-          <button className="chat-new" onClick={newSession}>
+        <div className="chat-head-right">
+          <span className="chat-online">
+            <span className="online-dot" />
+            En ligne
+          </span>
+          <button className="btn-new-session" onClick={newSession}>
             Nouvelle session
           </button>
         </div>
@@ -85,14 +136,23 @@ export default function ChatPanel({ rapport = null }) {
 
       <div className="chat-body">
         {messages.length === 0 && !busy && (
-          <div className="chat-empty">
-            <p className="chat-empty-h">Session sur {scope}</p>
-            <p className="chat-empty-s">
-              Les réponses viennent du(des) rapport(s) sélectionné(s), accompagnées du
-              rapport et des pages. Chaque réponse est sourcée.
+          <div className="chat-welcome">
+            <div className="chat-welcome-icon">
+              <svg viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="22" fill="var(--accent-soft)"/>
+                <path d="M14 24h20M24 14v20" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 className="chat-welcome-title">
+              {companyName ? `Analyse — ${companyName}` : "Analyse multi-rapports"}
+            </h3>
+            <p className="chat-welcome-sub">
+              {companyName
+                ? `Posez une question sur les rapports de ${companyName}${year ? ` (${year})` : ""}.`
+                : "Posez une question sur l'ensemble des 70 entreprises indexées."}
             </p>
             <div className="suggestions">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button key={s} className="chip" onClick={() => submit(s)}>
                   {s}
                 </button>
@@ -103,27 +163,46 @@ export default function ChatPanel({ rapport = null }) {
 
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
-            <div className="bubble">
-              {m.role === "assistant" ? (
-                <Markdown>{m.content}</Markdown>
-              ) : (
-                m.content
+            {m.role === "assistant" && (
+              <div className="msg-avatar">
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                  <circle cx="12" cy="12" r="10" fill="var(--accent)"/>
+                  <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
+            )}
+            <div className="msg-content">
+              <div className="bubble">
+                {m.role === "assistant" ? (
+                  <Markdown>{m.content}</Markdown>
+                ) : (
+                  m.content
+                )}
+              </div>
+              {m.role === "assistant" && m.sources?.length > 0 && (
+                <div className="msg-sources">
+                  {m.sources.map((s, j) => (
+                    <span key={j} className="source-tag">{s}</span>
+                  ))}
+                </div>
               )}
             </div>
-            {m.role === "assistant" && m.sources && m.sources.length > 0 && (
-              <div className="msg-sources">{m.sources.join(", ")}</div>
-            )}
           </div>
         ))}
 
-        {busy && (
+        {busy && !messages[streamIdxRef.current]?.content && (
           <div className="msg assistant">
-            <div className="bubble typing">
-              <span />
-              <span />
-              <span />
+            <div className="msg-avatar">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                <circle cx="12" cy="12" r="10" fill="var(--accent)"/>
+                <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
             </div>
-            <div className="msg-sources">Consultation de l’index…</div>
+            <div className="msg-content">
+              <div className="bubble typing">
+                <span /><span /><span />
+              </div>
+            </div>
           </div>
         )}
 
@@ -136,8 +215,8 @@ export default function ChatPanel({ rapport = null }) {
           ref={textRef}
           rows={1}
           value={input}
-          placeholder="Écrivez votre question…"
-          onInput={autoGrow}
+          placeholder={`Question sur ${companyName || "tous les rapports"}…`}
+          onInput={grow}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -147,15 +226,17 @@ export default function ChatPanel({ rapport = null }) {
           }}
         />
         <button
-          className="btn btn-primary send"
+          className="btn-send"
           disabled={busy || !input.trim()}
           onClick={() => submit()}
           aria-label="Envoyer"
         >
-          ⏎
+          <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+            <path d="M17 10L3 3l3 7-3 7 14-7z" fill="currentColor"/>
+          </svg>
         </button>
       </div>
-      <p className="chat-hint">Entrée pour envoyer · Maj+Entrée pour passer à la ligne</p>
+      <p className="chat-hint">Entrée pour envoyer · Maj+Entrée pour nouvelle ligne</p>
     </div>
   );
 }

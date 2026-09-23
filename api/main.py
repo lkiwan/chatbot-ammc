@@ -5,19 +5,47 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from build_index import build_index, find_pdfs, load_registry
-from chat import answer, invalidate, load_store
+from build_index import build_index, find_pdfs, load_registry, load_scraper_meta
+from chat import answer, answer_stream_tokens, invalidate, load_store
 from config import CHUNKS_DIR, LLM_MODEL, PDFS_DIR, RAW_DIR
 from extract import sanitize_stem
+
+# Optional PostgreSQL-backed retrieval (graceful degradation if DB not running)
+try:
+    from db.session import check_connection
+    from retrieval.hybrid_retriever import HybridRetriever
+    from retrieval.sql_retriever import SQLRetriever
+    _DB_AVAILABLE = check_connection()
+except Exception:
+    _DB_AVAILABLE = False
+
+_hybrid: Optional["HybridRetriever"] = None
+_sql: Optional["SQLRetriever"] = None
+
+def _get_hybrid() -> "HybridRetriever":
+    global _hybrid
+    if _hybrid is None:
+        from retrieval.hybrid_retriever import HybridRetriever
+        _hybrid = HybridRetriever()
+    return _hybrid
+
+def _get_sql() -> "SQLRetriever":
+    global _sql
+    if _sql is None:
+        from retrieval.sql_retriever import SQLRetriever
+        _sql = SQLRetriever()
+    return _sql
 
 WATCH_INTERVAL = 4
 _INGEST_LOCK = threading.Lock()
@@ -115,6 +143,9 @@ class ChatRequest(BaseModel):
     message: str
     history: list[dict] = []
     rapport: str | None = None
+    company: str | None = None
+    year: str | None = None
+    sector: str | None = None
 
 
 def _read_csv(name: str) -> list[dict]:
@@ -210,12 +241,189 @@ def chunks(rapport: str | None = None):
     return out[:500]
 
 
+@app.get("/api/companies")
+def companies():
+    meta = load_scraper_meta()
+    seen: dict[str, dict] = {}
+    for stem, m in meta.items():
+        key = m.get("company_normalized", stem)
+        if key not in seen:
+            seen[key] = {
+                "company": m.get("company", key),
+                "company_normalized": key,
+                "sector": m.get("sector", ""),
+                "years": [],
+            }
+        year = m.get("year", "")
+        if year and year not in seen[key]["years"]:
+            seen[key]["years"].append(year)
+    result = sorted(seen.values(), key=lambda x: x["company"])
+    for r in result:
+        r["years"] = sorted(r["years"], reverse=True)
+    return result
+
+
 @app.post("/api/chat")
 def chat(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message vide.")
-    reply, sources = answer(request.message, request.history, rapport=request.rapport)
+    reply, sources = answer(
+        request.message,
+        request.history,
+        rapport=request.rapport,
+        company=request.company,
+        year=request.year,
+        sector=request.sector,
+    )
     return {"role": "assistant", "content": reply, "sources": sources}
+
+
+@app.post("/api/chat/stream")
+def chat_stream(request: ChatRequest):
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message vide.")
+
+    def generate():
+        for token, sources in answer_stream_tokens(
+            request.message,
+            request.history,
+            rapport=request.rapport,
+            company=request.company,
+            year=request.year,
+            sector=request.sector,
+        ):
+            if sources is not None:
+                yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
+            else:
+                yield f"data: {json.dumps({'token': token})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/db/status")
+def db_status():
+    """Check PostgreSQL availability."""
+    try:
+        from db.session import check_connection
+        ok = check_connection()
+    except Exception as exc:
+        return {"available": False, "error": str(exc)}
+    return {"available": ok}
+
+
+@app.get("/api/companies/db")
+def companies_db(sector: Optional[str] = Query(None)):
+    """List companies from PostgreSQL (requires DB)."""
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PostgreSQL not available")
+    result = _get_sql().list_companies(sector=sector)
+    if result.error:
+        raise HTTPException(status_code=500, detail=result.error)
+    return result.rows
+
+
+@app.get("/api/companies/{company_slug}/metrics")
+def company_metrics(
+    company_slug: str,
+    year: Optional[int] = Query(None),
+    metric: Optional[str] = Query(None),
+):
+    """Get financial metrics for a company from PostgreSQL."""
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PostgreSQL not available")
+    sql = _get_sql()
+    if metric:
+        result = sql.get_metric(company_slug, metric, year)
+    else:
+        result = sql.compare_metric_across_years(company_slug, metric or "net_income")
+    if result.error:
+        raise HTTPException(status_code=500, detail=result.error)
+    return {"company": company_slug, "rows": result.rows, "count": result.row_count}
+
+
+@app.get("/api/companies/{company_slug}/financials")
+def company_financials(company_slug: str, year: int = Query(...)):
+    """Get all financial statements for a company/year from PostgreSQL."""
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PostgreSQL not available")
+    sql = _get_sql()
+    income  = sql.get_income_statement(company_slug, year)
+    balance = sql.get_balance_sheet(company_slug, year)
+    cashflow = sql.get_cash_flow(company_slug, year)
+    ratios  = sql.get_financial_ratios(company_slug, year)
+    return {
+        "company": company_slug,
+        "year":    year,
+        "income_statement": income.rows[0] if income.rows else None,
+        "balance_sheet":    balance.rows[0] if balance.rows else None,
+        "cash_flow":        cashflow.rows[0] if cashflow.rows else None,
+        "ratios":           ratios.rows,
+    }
+
+
+@app.get("/api/companies/{company_slug}/shareholders")
+def company_shareholders(
+    company_slug: str,
+    year: Optional[int] = Query(None),
+):
+    """Get shareholder structure for a company."""
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PostgreSQL not available")
+    result = _get_sql().get_shareholders(company_slug, year=year)
+    if result.error:
+        raise HTTPException(status_code=500, detail=result.error)
+    return result.rows
+
+
+@app.post("/api/search")
+def hybrid_search(request: "ChatRequest"):
+    """
+    Hybrid search: route to SQL and/or vector based on question type.
+    Returns raw retrieval results (not LLM-generated).
+    """
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message vide.")
+
+    year_int = None
+    try:
+        year_int = int(request.year) if request.year else None
+    except ValueError:
+        pass
+
+    if _DB_AVAILABLE:
+        result = _get_hybrid().retrieve(
+            request.message,
+            company=request.company,
+            year=year_int,
+            sector=request.sector,
+        )
+        return {
+            "query_type": result.query_type,
+            "confidence": result.router_result.confidence,
+            "reasoning":  result.router_result.reasoning,
+            "sql_rows":   result.sql_result.rows if result.sql_result else [],
+            "chunks":     result.vector_result.chunks[:5] if result.vector_result else [],
+        }
+    else:
+        # Fallback: vector only
+        from chat import retrieve as _retrieve
+        chunks = _retrieve(
+            request.message,
+            company=request.company,
+            year=request.year,
+            sector=request.sector,
+        )
+        return {
+            "query_type": "vector",
+            "confidence": 0.5,
+            "reasoning":  "PostgreSQL not available — vector only",
+            "sql_rows":   [],
+            "chunks":     chunks[:5] if chunks else [],
+        }
 
 
 if DIST.exists():
