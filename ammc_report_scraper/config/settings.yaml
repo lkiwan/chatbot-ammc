@@ -1,0 +1,41 @@
+scraper:
+  base_url: "https://www.ammc.ma"
+  delay: 1.5
+  timeout: 30
+  max_retries: 3
+  user_agent: "FinancialIntelligencePlatform/1.0 (research; contact@example.com)"
+  max_years: 5
+
+paths:
+  data_dir: "data"
+  companies_dir: "data/companies"
+  reports_dir: "data/reports"
+  manifests_dir: "data/manifests"
+  logs_dir: "logs"
+
+endpoints:
+  emitters_list: "/fr/espace-emetteurs/liste-des-emetteurs"
+  financial_statements: "/fr/liste-etats-financiers-emetteurs"
+  emitter_base: "/fr/espace-emetteurs"
+  document_base: "/fr/espace-emetteurs/etats-financiers"
+  pdf_base: "/sites/default/files"
+
+filters:
+  annual_report_type: "Rapports annuels"
+  annual_report_slug_marker: "-rfa-"
+  semester_report_slug_marker: "-rfs-"
+
+report_types:
+  annual:
+    - "rapport annuel"
+    - "rapports annuels"
+    - "rapport financier annuel"
+    - "annual report"
+    - "rfa"
+  exclude:
+    - "rapport semestriel"
+    - "rapport 1er semestre"
+    - "rapport du premier semestre"
+    - "communiqué financier"
+    - "rapport esg"
+    - "rfs"

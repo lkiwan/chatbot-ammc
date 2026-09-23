@@ -1,0 +1,26 @@
+# Downloaded data (PDFs, CSVs) - too large for git
+data/reports/
+data/companies/
+data/manifests/
+data/
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
