@@ -885,6 +885,120 @@ input, textarea { font-family: var(--sans); }
 }
 .md hr { border: none; border-top: 1px solid var(--line); margin: 12px 0; }
 
+/* ─── Login page ────────────────────────────────────────────── */
+.login-screen {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 24px;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 40px 36px 28px;
+  width: 100%; max-width: 380px;
+}
+.login-brand {
+  text-align: center; margin-bottom: 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.login-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 12px;
+  background: var(--accent); color: #fff;
+  font-weight: 800; font-size: 16px; letter-spacing: -.3px;
+}
+.login-title {
+  margin: 0; font-size: 22px; font-weight: 800;
+  letter-spacing: -.03em; color: var(--ink);
+}
+.login-sub {
+  margin: 0; font-size: 12.5px; color: var(--muted); font-weight: 500;
+}
+.login-form {
+  display: flex; flex-direction: column; gap: 16px;
+}
+.login-field {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.login-label {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-2);
+}
+.login-input {
+  width: 100%; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface-2);
+  font: 500 14px var(--sans); color: var(--ink);
+  padding: 10px 13px; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.login-input::placeholder { color: var(--muted); }
+.login-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+}
+.login-pwd-wrap { position: relative; }
+.login-pwd-wrap .login-input { padding-right: 42px; }
+.login-eye {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); padding: 4px; transition: color .15s;
+  display: flex; align-items: center;
+}
+.login-eye:hover { color: var(--ink); }
+.login-error {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0; font-size: 13px; color: var(--red);
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: var(--radius); padding: 9px 12px;
+}
+.login-btn {
+  width: 100%; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius);
+  font: 600 14px var(--sans); padding: 11px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .1s; margin-top: 4px;
+  min-height: 42px;
+}
+.login-btn:hover:not(:disabled) { background: var(--accent-2); }
+.login-btn:disabled { opacity: .4; cursor: not-allowed; }
+.login-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.login-footer {
+  margin-top: 20px; text-align: center;
+}
+.login-uses {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--muted); font-weight: 500;
+}
+.login-uses.exhausted { color: var(--red); }
+
+/* ─── Topbar user / logout ───────────────────────────────────── */
+.topbar-user {
+  display: flex; align-items: center; gap: 6px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+.topbar-user-role {
+  font-size: 11.5px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.btn-logout {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--line);
+  border-radius: var(--radius); color: var(--muted);
+  transition: all .15s;
+}
+.btn-logout:hover {
+  border-color: var(--red); color: var(--red); background: #fef2f2;
+}
+
 /* ─── Responsive ────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .sidebar-wrap.open {

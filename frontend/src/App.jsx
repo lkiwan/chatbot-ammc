@@ -4,8 +4,10 @@ import Sidebar from "./components/Sidebar.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import PdfViewer from "./components/PdfViewer.jsx";
 import Splitter from "./components/Splitter.jsx";
+import Login from "./components/Login.jsx";
 
-const LS_KEY = "ammc-layout";
+const LS_KEY      = "ammc-layout";
+const SESSION_KEY = "ae-session";
 
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
@@ -20,7 +22,16 @@ function loadSizes() {
   return { sidebar: 272, pdf: 400 };
 }
 
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export default function App() {
+  const [auth, setAuth] = useState(loadSession);
+
   const [health, setHealth]       = useState(null);
   const [companies, setCompanies] = useState([]);
   const [stats, setStats]         = useState(null);
@@ -32,20 +43,36 @@ export default function App() {
   const [sizes, setSizes]         = useState(loadSizes);
 
   useEffect(() => {
+    if (!auth) return;
     fetchHealth().then(setHealth).catch(() => setHealth({ ok: false }));
     fetchCompanies().then(setCompanies).catch(() => setCompanies([]));
     fetchReports().then((r) => setStats(r.total)).catch(() => {});
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(sizes));
-    } catch {}
+    try { localStorage.setItem(LS_KEY, JSON.stringify(sizes)); } catch {}
   }, [sizes]);
 
   useEffect(() => {
     setActiveSource(null);
   }, [activeCompany, activeYear]);
+
+  const handleLogin = (authData) => {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(authData));
+    setAuth(authData);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem(SESSION_KEY);
+    setAuth(null);
+    setCompanies([]);
+    setStats(null);
+    setHealth(null);
+    setActiveCompany(null);
+    setActiveYear(null);
+  };
+
+  if (!auth) return <Login onLogin={handleLogin} />;
 
   const selectedCompany = companies.find((c) => c.company_normalized === activeCompany);
 
@@ -67,7 +94,6 @@ export default function App() {
             <span className="brand-sep" />
             <span className="brand-sub">Financial Intelligence</span>
           </div>
-
         </div>
 
         <div className="topbar-center">
@@ -82,25 +108,35 @@ export default function App() {
         <div className="topbar-right">
           {stats && (
             <div className="topbar-stats">
-              <Stat label="entreprises" value={companies.length} />
-              <Stat label="rapports" value={stats.rapports} />
-              <Stat label="extraits" value={stats.chunks?.toLocaleString("fr")} />
+              <Stat label="companies" value={companies.length} />
+              <Stat label="reports"   value={stats.rapports} />
+              <Stat label="excerpts"  value={stats.chunks?.toLocaleString("fr")} />
             </div>
           )}
           <button
             className={`btn-pdf-toggle ${pdfOpen ? "active" : ""}`}
             onClick={() => setPdfOpen((v) => !v)}
             aria-pressed={pdfOpen}
-            title="Afficher / masquer la visionneuse PDF"
+            title="Show / hide PDF viewer"
           >
             PDF
           </button>
           <StatusBadge health={health} />
+          <div className="topbar-user">
+            <span className="topbar-user-role">
+              {auth.role === "admin" ? "Admin" : "Demo"}
+            </span>
+            <button className="btn-logout" onClick={handleLogout} title="Sign out">
+              <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="layout">
-        {/* ── Menu (entreprises) ── */}
+        {/* ── Sidebar ── */}
         <div className={`sidebar-wrap ${sidebarOpen ? "open" : "closed"}`}
           style={{ width: sidebarOpen ? sizes.sidebar : 0 }}
         >
@@ -132,7 +168,7 @@ export default function App() {
           />
         )}
 
-        {/* ── Chat + visionneuse PDF ── */}
+        {/* ── Chat + PDF viewer ── */}
         <main className="main">
           <ChatPanel
             key={`${activeCompany}-${activeYear}`}
@@ -178,7 +214,7 @@ function Stat({ label, value }) {
 
 function StatusBadge({ health }) {
   const state = health === null ? "pending" : health?.index ? "up" : "down";
-  const label = { up: "Index prêt", pending: "Connexion…", down: "Hors ligne" }[state];
+  const label = { up: "Ready", pending: "Connecting…", down: "Offline" }[state];
   return (
     <span className={`status-badge ${state}`}>
       <span className="status-dot" />
