@@ -25,6 +25,22 @@ export default function Login({ onLogin }) {
   const demoUses    = getDemoUses();
   const demoBlocked = demoUses >= DEMO_MAX_USES;
 
+  const handleDemoLogin = () => {
+    if (demoBlocked || loading) return;
+    setError("");
+    setLoading(true);
+    setTimeout(() => {
+      const uses = getDemoUses();
+      if (uses >= DEMO_MAX_USES) {
+        setError("Demo access exhausted. Contact the administrator for full access.");
+        setLoading(false);
+        return;
+      }
+      localStorage.setItem(LS_USES_KEY, String(uses + 1));
+      onLogin({ role: "demo", usesLeft: DEMO_MAX_USES - uses - 1, email: DEMO_EMAIL });
+    }, 500);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
@@ -139,6 +155,42 @@ export default function Login({ onLogin }) {
             )}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="login-divider">
+          <span>or</span>
+        </div>
+
+        {/* Demo quick access */}
+        <button
+          type="button"
+          className="login-demo-btn"
+          onClick={handleDemoLogin}
+          disabled={loading || demoBlocked}
+          title={demoBlocked ? "Demo access exhausted" : `${DEMO_MAX_USES - demoUses} use${DEMO_MAX_USES - demoUses > 1 ? "s" : ""} remaining`}
+        >
+          {loading ? (
+            <span className="login-spinner login-spinner-dark" />
+          ) : demoBlocked ? (
+            <>
+              <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+              Demo exhausted
+            </>
+          ) : (
+            <>
+              <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                <path d="M8 2l1.5 4.5H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2.5 1.4-4.3L2 6.5h4.5L8 2z" fill="currentColor" opacity=".85"/>
+              </svg>
+              Try Free Demo
+              <span className="login-demo-badge">
+                {DEMO_MAX_USES - demoUses} left
+              </span>
+            </>
+          )}
+        </button>
 
         {/* Demo access info */}
         <div className="login-footer">
