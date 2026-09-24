@@ -67,6 +67,7 @@ export default function App() {
             <span className="brand-sep" />
             <span className="brand-sub">Intelligence Financière</span>
           </div>
+
         </div>
 
         <div className="topbar-center">

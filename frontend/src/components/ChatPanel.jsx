@@ -186,9 +186,11 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         {messages.length === 0 && !busy && (
           <div className="chat-welcome">
             <div className="chat-welcome-icon">
-              <svg viewBox="0 0 48 48" fill="none">
-                <circle cx="24" cy="24" r="22" fill="var(--accent-soft)"/>
-                <path d="M14 24h20M24 14v20" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"/>
+              <svg viewBox="0 0 56 56" fill="none">
+                <rect width="56" height="56" rx="14" fill="var(--accent-soft)"/>
+                <rect x="10" y="34" width="8" height="14" rx="2" fill="var(--accent)" opacity=".4"/>
+                <rect x="24" y="22" width="8" height="26" rx="2" fill="var(--accent)" opacity=".7"/>
+                <rect x="38" y="12" width="8" height="36" rx="2" fill="var(--accent)"/>
               </svg>
             </div>
             <h3 className="chat-welcome-title">
