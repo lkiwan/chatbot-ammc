@@ -7,10 +7,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+import httpx
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -244,6 +246,63 @@ def pdfs():
         })
     out.sort(key=lambda r: (r["company"], int(r["year"] or 0), r["stem"]))
     return out
+
+
+@app.get("/api/pdf")
+async def pdf_proxy(request: Request):
+    """Proxy un PDF AMMC pour l'afficher dans la visionneuse integree.
+
+    Le serveur source envoie `X-Frame-Options: SAMEORIGIN`, donc on ne peut pas
+    l'encadrer directement depuis le navigateur : on transit par notre backend
+    (meme origine) en retirant l'entete bloquant et en relayant le Range.
+    """
+    url = request.query_params.get("url", "")
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="URL PDF invalide.")
+    try:
+        host = (url.split("/")[2] or "").split(":")[0].lower()
+    except Exception:
+        host = ""
+    if not host.endswith("ammc.ma"):
+        raise HTTPException(status_code=400, detail="Domaine PDF non autorise.")
+
+    headers = {}
+    if request.headers.get("range"):
+        headers["Range"] = request.headers["range"]
+
+    client = httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=httpx.Timeout(300.0, connect=20.0),
+        headers={"User-Agent": "Mozilla/5.0 (compatible; AMMC-Chatbot/1.0)"},
+    )
+    try:
+        resp = await client.send(client.build_request("GET", url, headers=headers), stream=True)
+    except Exception as exc:
+        await client.aclose()
+        raise HTTPException(status_code=502, detail=f"PDF injoignable : {type(exc).__name__}")
+
+    if resp.status_code >= 400:
+        await client.aclose()
+        raise HTTPException(status_code=502, detail="PDF indisponible.")
+
+    out_headers = {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": "inline",
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=3600",
+    }
+    if resp.status_code == 206 and resp.headers.get("content-range"):
+        out_headers["Content-Range"] = resp.headers["content-range"]
+
+    async def stream():
+        try:
+            async for chunk in resp.aiter_bytes():
+                yield chunk
+        finally:
+            await resp.aclose()
+            await client.aclose()
+
+    return StreamingResponse(stream(), status_code=resp.status_code, headers=out_headers)
 
 
 @app.get("/api/tables")

@@ -383,8 +383,9 @@ input, textarea { font-family: var(--sans); }
   flex: 1;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
-  padding: 20px;
+  align-items: stretch;
+  gap: 6px;
+  padding: 16px;
   background: var(--bg);
   min-width: 0;
 }
@@ -392,6 +393,7 @@ input, textarea { font-family: var(--sans); }
 /* ─── Chat ───────────────────────────────────────────────────── */
 .chat {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -540,63 +542,193 @@ input, textarea { font-family: var(--sans); }
   color: var(--muted);
   background: var(--bg); border: 1px solid var(--line);
   border-radius: 999px; padding: 3px 9px;
+  line-height: 1.5;
 }
-a.source-tag {
+.source-tag {
   text-decoration: none; cursor: pointer;
   transition: color .15s, border-color .15s, background .15s;
 }
-a.source-tag:hover {
+.source-tag:hover {
   color: var(--blue);
   border-color: var(--blue);
   background: color-mix(in srgb, var(--blue) 8%, var(--bg));
 }
 
-/* PDFs panel (left of the chat) */
-.chat-main {
-  display: flex; flex: 1; min-height: 0;
+/* ─── Source tags (ouvrent la visionneuse PDF) ──────────────── */
+.source-wrap {
+  display: inline-flex; align-items: center; gap: 2px;
 }
-.pdf-panel {
-  display: flex; flex-direction: column;
-  width: 230px; flex-shrink: 0;
-  background: var(--surface-2);
-  border-right: 1px solid var(--line);
-  min-height: 0;
-}
-.pdf-panel.closed { width: auto; border-right: none; }
-.pdf-panel-toggle {
-  display: flex; align-items: center; justify-content: space-between;
-  background: none; border: none; cursor: pointer;
-  color: var(--muted); font-size: 12px; font-weight: 600;
-  padding: 10px 12px; width: 100%;
-}
-.pdf-panel-toggle:hover { color: var(--blue); }
-.pdf-panel-list {
-  flex: 1; overflow-y: auto;
-  padding: 0 8px 10px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.pdf-panel-empty {
-  font-size: 12px; color: var(--muted);
-  padding: 6px 4px;
-}
-.pdf-link {
-  display: flex; align-items: center; gap: 8px;
+.source-ext {
+  font-size: 11px;
+  color: var(--muted);
   text-decoration: none;
-  font-size: 12.5px; color: var(--text);
-  background: var(--bg); border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 6px 8px;
-  transition: border-color .15s, color .15s;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+  padding: 2px;
 }
-.pdf-link:hover { border-color: var(--blue); }
-.pdf-link-year {
-  font-size: 11px; font-weight: 700;
-  color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 12%, transparent);
-  border-radius: 6px; padding: 1px 5px;
+.source-wrap:hover .source-ext { opacity: 1; }
+.source-ext:hover { color: var(--blue); }
+
+/* ─── Splitter (redimensionnement des panneaux) ─────────────── */
+.splitter {
+  position: relative;
+  flex-shrink: 0;
+  background: transparent;
+}
+.splitter-vertical {
+  width: 10px;
+  cursor: col-resize;
+}
+.splitter-horizontal {
+  height: 10px;
+  cursor: row-resize;
+}
+.splitter-vertical::after {
+  content: "";
+  position: absolute;
+  top: 8px; bottom: 8px; left: 50%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--line);
+  opacity: 0;
+  transition: opacity .15s, background .15s;
+}
+.splitter-vertical:hover::after,
+.splitter-vertical:active::after {
+  opacity: 1;
+  background: var(--accent);
+}
+.splitter-horizontal::after {
+  content: "";
+  position: absolute;
+  left: 8px; right: 8px; top: 50%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line);
+  opacity: 0;
+  transition: opacity .15s, background .15s;
+}
+.splitter-horizontal:hover::after,
+.splitter-horizontal:active::after {
+  opacity: 1;
+  background: var(--accent);
+}
+
+/* ─── Visionneuse PDF (à droite du chat) ────────────────────── */
+.pdf-right-wrap {
+  flex-shrink: 0;
+  min-width: 0;
+  display: flex;
+}
+.pdf-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.pdf-right-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
   flex-shrink: 0;
 }
-.pdf-link-name {
+.pdf-right-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pdf-right-title {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pdf-right-page {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border-radius: 999px;
+  padding: 1px 8px; flex-shrink: 0;
+}
+.pdf-right-actions {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.pdf-right-frame {
+  flex: 1; width: 100%; border: none;
+  background: #525659;
+  min-height: 0;
+}
+.pdf-right-empty {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--muted);
+  padding: 24px;
+  font-size: 13.5px; line-height: 1.6;
+}
+.pdf-right-empty p { margin: 0; max-width: 280px; }
+.pdf-right-empty-icon { color: var(--muted); opacity: .6; }
+.pdf-right-empty-sub { font-size: 12px; opacity: .8; }
+
+/* Bouton topbar PDF */
+.btn-pdf-toggle {
+  font-size: 12px; font-weight: 600;
+  color: var(--muted); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 12px; transition: all .15s;
+}
+.btn-pdf-toggle:hover { border-color: var(--blue); color: var(--blue); }
+.btn-pdf-toggle.active {
+  color: var(--blue); border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+/* Picker PDFs (choix d'un rapport dans la visionneuse) */
+.pdf-picker { position: relative; }
+.pdf-picker-btn, .pdf-ext, .pdf-close {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--muted);
+  font-size: 14px; text-decoration: none;
+  transition: all .15s;
+}
+.pdf-picker-btn:hover, .pdf-ext:hover { border-color: var(--blue); color: var(--blue); }
+.pdf-close:hover { border-color: var(--accent); color: var(--accent); }
+.pdf-picker-menu {
+  position: absolute; right: 0; top: 32px;
+  z-index: 60;
+  min-width: 230px; max-height: 320px; overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 6px;
+}
+.pdf-picker-empty {
+  font-size: 12px; color: var(--muted); padding: 8px; margin: 0;
+}
+.pdf-picker-item {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  background: none; border: none; border-radius: 8px;
+  padding: 6px 8px; text-align: left;
+  font-size: 12.5px; color: var(--ink-2);
+  transition: background .15s;
+}
+.pdf-picker-item:hover { background: var(--bg); }
+.pdf-picker-year {
+  font-size: 11px; font-weight: 700; color: var(--blue);
+  background: var(--blue-soft); border-radius: 6px; padding: 1px 5px;
+  flex-shrink: 0;
+}
+.pdf-picker-name {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 

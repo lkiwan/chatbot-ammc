@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { fetchPdfs, sendChatStream } from "../api.js";
+import { sendChatStream } from "../api.js";
 import Markdown from "./Markdown.jsx";
 
 const SUGGESTIONS_DEFAULT = [
@@ -27,28 +27,17 @@ function useAutoGrow() {
   return [ref, grow];
 }
 
-export default function ChatPanel({ company, companyName, year, sector }) {
+export default function ChatPanel({ company, companyName, year, sector, onOpenSource }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [pdfs, setPdfs] = useState([]);
-  const [pdfsOpen, setPdfsOpen] = useState(true);
   const [textRef, grow] = useAutoGrow();
   const bottomRef = useRef(null);
   const streamIdxRef = useRef(null);
 
   const isBank = sector?.toLowerCase().includes("banque") || sector?.toLowerCase().includes("assur");
   const suggestions = isBank ? SUGGESTIONS_BANK : SUGGESTIONS_DEFAULT;
-
-  useEffect(() => {
-    fetchPdfs().then(setPdfs).catch(() => setPdfs([]));
-  }, []);
-
-  const visiblePdfs = pdfs.filter((p) =>
-    (!company || p.company_normalized === company) &&
-    (!year || String(p.year) === String(year))
-  );
 
   useEffect(() => {
     setMessages([]);
@@ -145,41 +134,7 @@ export default function ChatPanel({ company, companyName, year, sector }) {
         </div>
       </div>
 
-      <div className="chat-main">
-        <div className={`pdf-panel ${pdfsOpen && visiblePdfs.length > 0 ? "open" : "closed"}`}>
-          <button
-            className="pdf-panel-toggle"
-            onClick={() => setPdfsOpen((v) => !v)}
-            aria-expanded={pdfsOpen}
-          >
-            <span className="pdf-panel-title">
-              PDFs{visiblePdfs.length > 0 ? ` (${visiblePdfs.length})` : ""}
-              {pdfsOpen ? " ▾" : " ▸"}
-            </span>
-          </button>
-          {pdfsOpen && (
-            <div className="pdf-panel-list">
-              {visiblePdfs.length === 0 && (
-                <p className="pdf-panel-empty">Aucun PDF indexé{company ? " pour cette entreprise" : ""}.</p>
-              )}
-              {visiblePdfs.map((p) => (
-                <a
-                  key={p.stem}
-                  className="pdf-link"
-                  href={`${p.url}#page=1`}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={p.stem}
-                >
-                  <span className="pdf-link-year">{p.year}</span>
-                  <span className="pdf-link-name">{p.company}</span>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="chat-body">
+      <div className="chat-body">
         {messages.length === 0 && !busy && (
           <div className="chat-welcome">
             <div className="chat-welcome-icon">
@@ -228,15 +183,24 @@ export default function ChatPanel({ company, companyName, year, sector }) {
                 <div className="msg-sources">
                   {m.sources.map((s, j) =>
                     s?.url ? (
-                      <a
-                        key={j}
-                        className="source-tag"
-                        href={`${s.url}#page=${s.page ?? 1}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {s.label}
-                      </a>
+                      <span key={j} className="source-wrap">
+                        <button
+                          className="source-tag"
+                          onClick={() => onOpenSource(s)}
+                          title={`Ouvrir p.${s.page ?? 1} dans la visionneuse`}
+                        >
+                          {s.label}
+                        </button>
+                        <a
+                          className="source-ext"
+                          href={`${s.url}#page=${s.page ?? 1}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Ouvrir dans un nouvel onglet"
+                        >
+                          ↗
+                        </a>
+                      </span>
                     ) : (
                       <span key={j} className="source-tag">{s.label || s}</span>
                     )
@@ -265,7 +229,6 @@ export default function ChatPanel({ company, companyName, year, sector }) {
 
         {error && <p className="chat-error">{error}</p>}
         <div ref={bottomRef} />
-      </div>
       </div>
 
       <div className="chat-composer">

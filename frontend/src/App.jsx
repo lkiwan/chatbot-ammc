@@ -2,6 +2,23 @@ import React, { useEffect, useState } from "react";
 import { fetchHealth, fetchCompanies, fetchReports } from "./api.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
+import PdfViewer from "./components/PdfViewer.jsx";
+import Splitter from "./components/Splitter.jsx";
+
+const LS_KEY = "ammc-layout";
+
+const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
+function loadSizes() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (typeof s.sidebar === "number" && typeof s.pdf === "number") return s;
+    }
+  } catch {}
+  return { sidebar: 272, pdf: 400 };
+}
 
 export default function App() {
   const [health, setHealth]       = useState(null);
@@ -10,12 +27,25 @@ export default function App() {
   const [activeCompany, setActiveCompany] = useState(null);
   const [activeYear, setActiveYear]       = useState(null);
   const [sidebarOpen, setSidebarOpen]     = useState(true);
+  const [pdfOpen, setPdfOpen]             = useState(true);
+  const [activeSource, setActiveSource]   = useState(null);
+  const [sizes, setSizes]         = useState(loadSizes);
 
   useEffect(() => {
     fetchHealth().then(setHealth).catch(() => setHealth({ ok: false }));
     fetchCompanies().then(setCompanies).catch(() => setCompanies([]));
     fetchReports().then((r) => setStats(r.total)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(sizes));
+    } catch {}
+  }, [sizes]);
+
+  useEffect(() => {
+    setActiveSource(null);
+  }, [activeCompany, activeYear]);
 
   const selectedCompany = companies.find((c) => c.company_normalized === activeCompany);
 
@@ -56,13 +86,23 @@ export default function App() {
               <Stat label="extraits" value={stats.chunks?.toLocaleString("fr")} />
             </div>
           )}
+          <button
+            className={`btn-pdf-toggle ${pdfOpen ? "active" : ""}`}
+            onClick={() => setPdfOpen((v) => !v)}
+            aria-pressed={pdfOpen}
+            title="Afficher / masquer la visionneuse PDF"
+          >
+            PDF
+          </button>
           <StatusBadge health={health} />
         </div>
       </header>
 
       <div className="layout">
-        {/* ── Sidebar ── */}
-        <div className={`sidebar-wrap ${sidebarOpen ? "open" : "closed"}`}>
+        {/* ── Menu (entreprises) ── */}
+        <div className={`sidebar-wrap ${sidebarOpen ? "open" : "closed"}`}
+          style={{ width: sidebarOpen ? sizes.sidebar : 0 }}
+        >
           {companies.length > 0 && (
             <Sidebar
               companies={companies}
@@ -82,7 +122,16 @@ export default function App() {
           )}
         </div>
 
-        {/* ── Main ── */}
+        {sidebarOpen && (
+          <Splitter
+            orientation="vertical"
+            onResize={(d) =>
+              setSizes((s) => ({ ...s, sidebar: clamp(s.sidebar + d, 200, 420) }))
+            }
+          />
+        )}
+
+        {/* ── Chat + visionneuse PDF ── */}
         <main className="main">
           <ChatPanel
             key={`${activeCompany}-${activeYear}`}
@@ -90,7 +139,27 @@ export default function App() {
             companyName={selectedCompany?.company}
             year={activeYear}
             sector={selectedCompany?.sector}
+            onOpenSource={setActiveSource}
           />
+
+          {pdfOpen && (
+            <>
+              <Splitter
+                orientation="vertical"
+                onResize={(d) =>
+                  setSizes((s) => ({ ...s, pdf: clamp(s.pdf - d, 280, 980) }))
+                }
+              />
+              <div className="pdf-right-wrap" style={{ width: sizes.pdf }}>
+                <PdfViewer
+                  source={activeSource}
+                  company={activeCompany}
+                  year={activeYear}
+                  onClose={() => setPdfOpen(false)}
+                />
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>

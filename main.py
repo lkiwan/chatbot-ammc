@@ -37,13 +37,13 @@ def main() -> None:
 
 
 def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
+    import subprocess
+
     import uvicorn
 
-    dist = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
-    if not os.path.isdir(dist):
-        sys.exit(
-            "Interface web non construite. Dans frontend/ : npm install puis npm run build."
-        )
+    frontend = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
+    print("Compilation du frontend pour servir la derniere version ...")
+    subprocess.check_call(["npm", "run", "build"], cwd=frontend, shell=os.name == "nt")
     print(f"Plateforme web sur http://{host}:{port}")
     threading.Thread(target=warm_cache, daemon=True).start()
     uvicorn.run("api.main:app", host=host, port=port, log_level="info")
