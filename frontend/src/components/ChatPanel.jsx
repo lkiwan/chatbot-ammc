@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { sendChatStream } from "../api.js";
 import Markdown from "./Markdown.jsx";
 
+const LS_KEY = "ammc-qa-history";
+const MAX_HISTORY = 20;
+
 const SUGGESTIONS_DEFAULT = [
   "Quel est le résultat net de l'exercice ?",
   "Quels sont les principaux actionnaires ?",
@@ -27,6 +30,15 @@ function useAutoGrow() {
   return [ref, grow];
 }
 
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ChatPanel({ company, companyName, year, sector, onOpenSource }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -36,13 +48,28 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
   const bottomRef = useRef(null);
   const streamIdxRef = useRef(null);
 
+  // Persistent Q&A history — survives new sessions and company/year changes
+  const [qaHistory, setQaHistory] = useState(loadHistory);
+  const [showHistory, setShowHistory] = useState(false);
+  const [expandedIdx, setExpandedIdx] = useState(null);
+
   const isBank = sector?.toLowerCase().includes("banque") || sector?.toLowerCase().includes("assur");
   const suggestions = isBank ? SUGGESTIONS_BANK : SUGGESTIONS_DEFAULT;
+
+  // Persist history to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(qaHistory));
+    } catch {
+      // localStorage full or unavailable — fail silently
+    }
+  }, [qaHistory]);
 
   useEffect(() => {
     setMessages([]);
     setError(null);
     setInput("");
+    // History intentionally NOT cleared here — persists across context switches
   }, [company, year]);
 
   useEffect(() => {
@@ -53,6 +80,13 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
     setMessages([]);
     setError(null);
     setInput("");
+    // History intentionally NOT cleared — persists across sessions
+  };
+
+  const clearHistory = () => {
+    setQaHistory([]);
+    setShowHistory(false);
+    setExpandedIdx(null);
   };
 
   const submit = async (text) => {
@@ -74,6 +108,8 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
       return next;
     });
 
+    let answerText = "";
+
     try {
       await sendChatStream(
         question,
@@ -81,6 +117,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         { company: company || null, year: year ? String(year) : null, sector: sector || null },
         {
           onToken: (token) => {
+            answerText += token;
             const idx = streamIdxRef.current;
             setMessages((m) => {
               const next = [...m];
@@ -95,6 +132,17 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
               next[idx] = { ...next[idx], sources };
               return next;
             });
+            // Save Q&A pair to persistent history
+            setQaHistory((h) => [
+              {
+                question,
+                answer: answerText,
+                companyName: companyName || null,
+                year: year ? String(year) : null,
+                timestamp: Date.now(),
+              },
+              ...h,
+            ].slice(0, MAX_HISTORY));
           },
         }
       );
@@ -230,6 +278,88 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         {error && <p className="chat-error">{error}</p>}
         <div ref={bottomRef} />
       </div>
+
+      {/* Persistent Q&A history bar — survives new sessions */}
+      {qaHistory.length > 0 && (
+        <div className="chat-history-bar">
+          <div className="chat-history-header">
+            <button
+              className="chat-history-toggle"
+              onClick={() => { setShowHistory((v) => !v); setExpandedIdx(null); }}
+            >
+              <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+                <path d="M8 3v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
+              </svg>
+              Historique
+              <span className="chat-history-count">{qaHistory.length}</span>
+              <svg
+                viewBox="0 0 16 16" fill="none" width="12" height="12"
+                style={{ transition: "transform .2s", transform: showHistory ? "rotate(180deg)" : "rotate(0deg)" }}
+              >
+                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {showHistory && (
+              <button className="chat-history-clear" onClick={clearHistory} title="Effacer l'historique">
+                Effacer
+              </button>
+            )}
+          </div>
+
+          {showHistory && (
+            <div className="chat-history-list">
+              {qaHistory.map((item, i) => (
+                <div key={i} className={`chat-history-item${expandedIdx === i ? " expanded" : ""}`}>
+                  <button
+                    className="chat-history-item-head"
+                    onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                  >
+                    <div className="chat-history-item-meta">
+                      {item.companyName && (
+                        <span className="chat-history-badge">{item.companyName}{item.year ? ` · ${item.year}` : ""}</span>
+                      )}
+                      <span className="chat-history-time">
+                        {new Date(item.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="chat-history-question">
+                      {item.question.length > 80 ? item.question.slice(0, 80) + "…" : item.question}
+                    </p>
+                    <svg
+                      viewBox="0 0 16 16" fill="none" width="11" height="11"
+                      className="chat-history-chevron"
+                      style={{ transform: expandedIdx === i ? "rotate(180deg)" : "rotate(0deg)" }}
+                    >
+                      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+
+                  {expandedIdx === i && (
+                    <div className="chat-history-item-body">
+                      <p className="chat-history-answer">
+                        {item.answer}
+                      </p>
+                      <button
+                        className="chat-history-reask"
+                        onClick={() => {
+                          setInput(item.question);
+                          if (textRef.current) {
+                            textRef.current.focus();
+                            setTimeout(grow, 0);
+                          }
+                        }}
+                      >
+                        Reposer cette question →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="chat-composer">
         <textarea
