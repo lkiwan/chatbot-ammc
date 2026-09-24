@@ -105,10 +105,10 @@ input, textarea { font-family: var(--sans); }
 /* Brand */
 .brand { display: flex; align-items: center; gap: 9px; }
 .brand-mark {
-  width: 30px; height: 30px; border-radius: 7px;
+  width: 32px; height: 30px; border-radius: 7px;
   background: var(--accent); color: #fff;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 14px; letter-spacing: -.5px;
+  font-weight: 800; font-size: 11px; letter-spacing: -.3px;
   flex-shrink: 0;
 }
 .brand-name {

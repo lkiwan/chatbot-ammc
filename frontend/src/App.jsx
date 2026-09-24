@@ -62,10 +62,10 @@ export default function App() {
             <span /><span /><span />
           </button>
           <div className="brand">
-            <span className="brand-mark">A</span>
-            <span className="brand-name">AMMC</span>
+            <span className="brand-mark">AE</span>
+            <span className="brand-name">AnnualEdge</span>
             <span className="brand-sep" />
-            <span className="brand-sub">Intelligence Financière</span>
+            <span className="brand-sub">Financial Intelligence</span>
           </div>
 
         </div>
