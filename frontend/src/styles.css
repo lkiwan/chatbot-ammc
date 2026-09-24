@@ -836,8 +836,8 @@ input, textarea { font-family: var(--sans); }
 .chat-history-answer {
   margin: 8px 0 10px;
   font-size: 12.5px; color: var(--ink-2); line-height: 1.6;
-  white-space: pre-line;
 }
+.chat-history-answer .md { font-size: 12.5px; }
 .chat-history-reask {
   font-size: 11.5px; font-weight: 600; color: var(--accent);
   background: var(--accent-soft); border: 1px solid transparent;

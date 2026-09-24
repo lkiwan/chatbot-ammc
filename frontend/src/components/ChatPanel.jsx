@@ -339,9 +339,9 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
 
                   {expandedIdx === i && (
                     <div className="chat-history-item-body">
-                      <p className="chat-history-answer">
-                        {item.answer}
-                      </p>
+                      <div className="chat-history-answer">
+                        <Markdown>{item.answer}</Markdown>
+                      </div>
                       <button
                         className="chat-history-reask"
                         onClick={() => {
