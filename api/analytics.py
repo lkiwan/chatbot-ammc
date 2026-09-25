@@ -1,11 +1,21 @@
 import hashlib
+import hmac
 import json
+import os
 import threading
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 _LOCK = threading.Lock()
-_DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "analytics.json"
+_ROOT = Path(__file__).resolve().parent.parent
+_DATA_FILE = Path(
+    os.environ.get("ANALYTICS_FILE") or (_ROOT / "data" / "analytics.json")
+)
+_SALT = (
+    os.environ.get("ANALYTICS_SALT")
+    or os.environ.get("API_TOKEN")
+    or "ammc-local-dev"
+).encode()
 
 _EMPTY = {"visits": [], "demo_logins": [], "demo_messages": [], "demo_exhausted": []}
 
@@ -20,21 +30,30 @@ def _detect_device(ua: str) -> str:
 
 
 def _hash_ip(ip: str) -> str:
-    return hashlib.sha256(ip.encode()).hexdigest()[:8]
+    # keyed hash: a plain sha256 of an IPv4 is trivially reversible by brute force
+    return hmac.new(_SALT, ip.encode(), hashlib.sha256).hexdigest()[:8]
 
 
 def load_analytics() -> dict:
     try:
         if _DATA_FILE.exists():
-            return json.loads(_DATA_FILE.read_text(encoding="utf-8"))
+            data = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {k: list(data.get(k) or []) for k in _EMPTY}
     except Exception:
         pass
     return {k: list(v) for k, v in _EMPTY.items()}
 
 
 def _save(data: dict) -> None:
-    _DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        _DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _DATA_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(_DATA_FILE)
+    except Exception:
+        # analytics must never break the app
+        pass
 
 
 def append_event(event_type: str, ua: str = "", ip: str = "") -> None:
@@ -48,7 +67,9 @@ def append_event(event_type: str, ua: str = "", ip: str = "") -> None:
         elif event_type == "demo_message":
             data["demo_messages"].append({"ts": now})
         elif event_type == "demo_exhausted":
-            data.setdefault("demo_exhausted", []).append({"ts": now, "device": _detect_device(ua)})
+            data["demo_exhausted"].append({"ts": now, "device": _detect_device(ua)})
+        else:
+            return
         _save(data)
 
 

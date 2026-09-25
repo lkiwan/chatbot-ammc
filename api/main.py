@@ -7,13 +7,12 @@ import time
 from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # api/ dir for local modules
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +20,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from analytics import append_event, get_summary
+from api.analytics import append_event, get_summary
 
 from build_index import (build_index, find_pdfs, iter_reports, load_registry,
                          load_scraper_meta)
@@ -191,7 +190,7 @@ def _total_counts():
 
 
 class TrackRequest(BaseModel):
-    type: str  # "visit" | "demo_login" | "demo_message"
+    type: Literal["visit", "demo_login", "demo_message", "demo_exhausted"]
 
 
 @app.post("/api/track")

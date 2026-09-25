@@ -33,7 +33,7 @@ export const fetchPdfs      = () => request("/pdfs");
 export const reingest       = () => request("/ingest", { method: "POST" });
 export const fetchAnalytics = () => request("/analytics");
 export const trackEvent     = (type) =>
-  fetch("/api/track", {
+  request("/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type }),
