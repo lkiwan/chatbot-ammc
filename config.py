@@ -42,3 +42,16 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql+psycopg2://ammc:ammc_secret@localhost:5432/ammc_finance",
 )
+
+# ── Runtime ─────────────────────────────────────────────────────────────────
+WATCH_ENABLED = os.environ.get("WATCH_ENABLED", "true").lower() == "true"
+API_TOKEN = os.environ.get("API_TOKEN", "")
+RATE_LIMIT_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "20"))
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]

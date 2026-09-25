@@ -1,5 +1,6 @@
 # secrets
 .env
+claudeflare.txt
 
 # donnees generees
 data/

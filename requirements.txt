@@ -1,7 +1,7 @@
 openai==2.26.0
 pypdf
 pdfplumber
-chromadb
+chromadb==1.5.9
 python-dotenv
 fastapi
 uvicorn[standard]

@@ -1,5 +1,15 @@
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const API_TOKEN = import.meta.env.VITE_API_TOKEN || "";
+
+function authHeaders(headers) {
+  return API_TOKEN ? { ...headers, "X-Api-Token": API_TOKEN } : headers;
+}
+
 async function request(path, options) {
-  const res = await fetch(`/api${path}`, options);
+  const res = await fetch(`${API_BASE}/api${path}`, {
+    ...options,
+    headers: authHeaders(options?.headers),
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `${res.status}`);
@@ -24,9 +34,9 @@ export async function sendChat(message, history, { rapport, company, year, secto
 }
 
 export async function sendChatStream(message, history, { rapport, company, year, sector } = {}, { onToken, onDone, onError } = {}) {
-  const res = await fetch("/api/chat/stream", {
+  const res = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ message, history, rapport, company, year, sector }),
   });
   if (!res.ok) {

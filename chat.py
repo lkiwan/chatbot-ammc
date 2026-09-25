@@ -43,6 +43,8 @@ SYSTEM = (
 
 _corpus: list[dict] | None = None
 _scraper_meta: dict | None = None
+_client = None
+_collection = None
 
 
 def _get_scraper_meta() -> dict:
@@ -77,8 +79,10 @@ def corpus() -> list[dict]:
 
 
 def invalidate() -> None:
-    global _corpus
+    global _corpus, _client, _collection
     _corpus = None
+    _client = None
+    _collection = None
 
 
 def _build_company_index() -> dict[str, str]:
@@ -121,11 +125,16 @@ def _resolve_company(question: str, company: str | None) -> str | None:
 
 
 def load_store() -> chromadb.Collection | None:
-    client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+    global _client, _collection
+    if _collection is not None:
+        return _collection
     try:
-        return client.get_collection(GLOBAL_COLLECTION)
+        if _client is None:
+            _client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+        _collection = _client.get_collection(GLOBAL_COLLECTION)
     except Exception:
-        return None
+        _collection = None
+    return _collection
 
 
 def warm_cache() -> None:

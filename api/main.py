@@ -1,8 +1,10 @@
 import csv
 import json
+import secrets
 import sys
 import threading
 import time
+from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -14,14 +16,15 @@ sys.path.insert(0, str(ROOT))
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from build_index import (build_index, find_pdfs, iter_reports, load_registry,
                          load_scraper_meta)
 from chat import answer, answer_stream_tokens, invalidate, load_store
-from config import CHUNKS_DIR, LLM_MODEL, PDFS_DIR, RAW_DIR
+from config import (API_TOKEN, CHUNKS_DIR, CORS_ORIGINS, LLM_MODEL, PDFS_DIR,
+                    RATE_LIMIT_PER_MIN, RAW_DIR, WATCH_ENABLED)
 from extract import sanitize_stem
 
 # Optional PostgreSQL-backed retrieval (graceful degradation if DB not running)
@@ -57,7 +60,8 @@ _FAILED: dict[str, float] = {}
 
 @asynccontextmanager
 async def _lifespan(app):
-    threading.Thread(target=_watch_directory, daemon=True).start()
+    if WATCH_ENABLED:
+        threading.Thread(target=_watch_directory, daemon=True).start()
     yield
 
 
@@ -69,11 +73,41 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_CHAT_PATHS = {"/api/chat", "/api/chat/stream"}
+_RATE_HITS: dict[str, deque[float]] = {}
+_RATE_LOCK = threading.Lock()
+
+
+@app.middleware("http")
+async def _api_guard(request: Request, call_next):
+    if request.url.path.startswith("/api"):
+        if API_TOKEN:
+            provided = request.headers.get("x-api-token", "")
+            auth = request.headers.get("authorization", "")
+            if auth[:7].lower() == "bearer ":
+                provided = auth[7:].strip()
+            if not secrets.compare_digest(provided, API_TOKEN):
+                return JSONResponse({"detail": "unauthorized"}, status_code=401)
+        if request.url.path.rstrip("/") in _CHAT_PATHS:
+            ip = request.client.host if request.client else "unknown"
+            now = time.time()
+            with _RATE_LOCK:
+                hits = _RATE_HITS.setdefault(ip, deque())
+                while hits and now - hits[0] > 60:
+                    hits.popleft()
+                if len(hits) >= RATE_LIMIT_PER_MIN:
+                    return JSONResponse(
+                        {"detail": "trop de requetes, reessayez dans un instant"},
+                        status_code=429,
+                    )
+                hits.append(now)
+    return await call_next(request)
 
 DIST = ROOT / "frontend" / "dist"
 
