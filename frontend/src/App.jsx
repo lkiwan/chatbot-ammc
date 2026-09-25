@@ -177,6 +177,7 @@ export default function App() {
             year={activeYear}
             sector={selectedCompany?.sector}
             onOpenSource={setActiveSource}
+            isDemo={auth?.role === "demo"}
           />
 
           {pdfOpen && (

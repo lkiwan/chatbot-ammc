@@ -1018,6 +1018,28 @@ input, textarea { font-family: var(--sans); }
 }
 .login-uses.exhausted { color: var(--red); }
 
+/* ─── Demo message limit wall ───────────────────────────────── */
+.demo-limit-wall {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.demo-limit-text { display: flex; flex-direction: column; gap: 2px; }
+.demo-limit-title {
+  margin: 0; font-size: 13px; font-weight: 700; color: var(--ink);
+}
+.demo-limit-sub {
+  margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5;
+}
+
+/* Demo remaining hint below composer */
+.chat-hint.demo-hint {
+  color: var(--accent); font-weight: 600;
+}
+
 /* ─── Topbar user / logout ───────────────────────────────────── */
 .topbar-user {
   display: flex; align-items: center; gap: 6px;

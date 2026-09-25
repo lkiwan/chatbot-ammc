@@ -2,8 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { sendChatStream } from "../api.js";
 import Markdown from "./Markdown.jsx";
 
-const LS_KEY = "ammc-qa-history";
-const MAX_HISTORY = 20;
+const LS_KEY       = "ammc-qa-history";
+const MAX_HISTORY  = 20;
+const DEMO_MSG_KEY   = "ae-demo-msgs";
+const DEMO_MSG_LIMIT = 2;
+
+function getDemoMsgsUsed() {
+  return parseInt(localStorage.getItem(DEMO_MSG_KEY) || "0", 10);
+}
 
 const SUGGESTIONS_DEFAULT = [
   "Quel est le résultat net de l'exercice ?",
@@ -39,7 +45,7 @@ function loadHistory() {
   }
 }
 
-export default function ChatPanel({ company, companyName, year, sector, onOpenSource }) {
+export default function ChatPanel({ company, companyName, year, sector, onOpenSource, isDemo }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,6 +53,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
   const [textRef, grow] = useAutoGrow();
   const bottomRef = useRef(null);
   const streamIdxRef = useRef(null);
+  const [demoMsgsUsed, setDemoMsgsUsed] = useState(getDemoMsgsUsed);
 
   // Persistent Q&A history — survives new sessions and company/year changes
   const [qaHistory, setQaHistory] = useState(loadHistory);
@@ -100,6 +107,15 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
       .filter((m) => m.role !== "system")
       .slice(-8)
       .map(({ role, content }) => ({ role, content }));
+
+    // Demo guard — block if limit reached
+    if (isDemo) {
+      const used = getDemoMsgsUsed();
+      if (used >= DEMO_MSG_LIMIT) return;
+      const next = used + 1;
+      localStorage.setItem(DEMO_MSG_KEY, String(next));
+      setDemoMsgsUsed(next);
+    }
 
     setBusy(true);
     setMessages((m) => {
@@ -363,33 +379,55 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         </div>
       )}
 
-      <div className="chat-composer">
-        <textarea
-          ref={textRef}
-          rows={1}
-          value={input}
-          placeholder={`Question sur ${companyName || "tous les rapports"}…`}
-          onInput={grow}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-        />
-        <button
-          className="btn-send"
-          disabled={busy || !input.trim()}
-          onClick={() => submit()}
-          aria-label="Envoyer"
-        >
-          <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-            <path d="M17 10L3 3l3 7-3 7 14-7z" fill="currentColor"/>
+      {isDemo && demoMsgsUsed >= DEMO_MSG_LIMIT ? (
+        <div className="demo-limit-wall">
+          <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
+            <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-        </button>
-      </div>
-      <p className="chat-hint">Entrée pour envoyer · Maj+Entrée pour nouvelle ligne</p>
+          <div className="demo-limit-text">
+            <p className="demo-limit-title">Demo limit reached</p>
+            <p className="demo-limit-sub">You've used your {DEMO_MSG_LIMIT} free messages. Contact the administrator for full access.</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="chat-composer">
+            <textarea
+              ref={textRef}
+              rows={1}
+              value={input}
+              placeholder={`Question sur ${companyName || "tous les rapports"}…`}
+              onInput={grow}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+            />
+            <button
+              className="btn-send"
+              disabled={busy || !input.trim()}
+              onClick={() => submit()}
+              aria-label="Envoyer"
+            >
+              <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                <path d="M17 10L3 3l3 7-3 7 14-7z" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+          {isDemo && (
+            <p className="chat-hint demo-hint">
+              Demo · {DEMO_MSG_LIMIT - demoMsgsUsed} message{DEMO_MSG_LIMIT - demoMsgsUsed > 1 ? "s" : ""} remaining
+            </p>
+          )}
+          {!isDemo && (
+            <p className="chat-hint">Entrée pour envoyer · Maj+Entrée pour nouvelle ligne</p>
+          )}
+        </>
+      )}
     </div>
   );
 }

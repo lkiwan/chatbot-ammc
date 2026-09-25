@@ -3,16 +3,16 @@ import React, { useState } from "react";
 // ── Credentials — change these as needed ──────────────────────
 const DEMO_EMAIL    = "demo@annualedge.com";
 const DEMO_PASSWORD = "Demo@2025";
-const DEMO_MAX_USES = 2;
 
 const ADMIN_EMAIL    = "admin@annualedge.com";
 const ADMIN_PASSWORD = "Edge@Admin25";
 // ─────────────────────────────────────────────────────────────
 
-const LS_USES_KEY = "ae-demo-uses";
+const DEMO_MSG_KEY   = "ae-demo-msgs";
+const DEMO_MSG_LIMIT = 2;
 
-function getDemoUses() {
-  return parseInt(localStorage.getItem(LS_USES_KEY) || "0", 10);
+function getDemoMsgsUsed() {
+  return parseInt(localStorage.getItem(DEMO_MSG_KEY) || "0", 10);
 }
 
 export default function Login({ onLogin }) {
@@ -22,23 +22,16 @@ export default function Login({ onLogin }) {
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
 
-  const demoUses    = getDemoUses();
-  const demoBlocked = demoUses >= DEMO_MAX_USES;
+  const demoMsgsUsed = getDemoMsgsUsed();
+  const demoBlocked  = demoMsgsUsed >= DEMO_MSG_LIMIT;
 
   const handleDemoLogin = () => {
-    if (demoBlocked || loading) return;
+    if (loading) return;
     setError("");
     setLoading(true);
     setTimeout(() => {
-      const uses = getDemoUses();
-      if (uses >= DEMO_MAX_USES) {
-        setError("Demo access exhausted. Contact the administrator for full access.");
-        setLoading(false);
-        return;
-      }
-      localStorage.setItem(LS_USES_KEY, String(uses + 1));
-      onLogin({ role: "demo", usesLeft: DEMO_MAX_USES - uses - 1, email: DEMO_EMAIL });
-    }, 500);
+      onLogin({ role: "demo", email: DEMO_EMAIL });
+    }, 400);
   };
 
   const handleSubmit = (e) => {
@@ -56,16 +49,9 @@ export default function Login({ onLogin }) {
         return;
       }
 
-      // Demo — limited uses
+      // Demo
       if (em === DEMO_EMAIL.toLowerCase() && password === DEMO_PASSWORD) {
-        const uses = getDemoUses();
-        if (uses >= DEMO_MAX_USES) {
-          setError("Demo access exhausted. Contact the administrator for full access.");
-          setLoading(false);
-          return;
-        }
-        localStorage.setItem(LS_USES_KEY, String(uses + 1));
-        onLogin({ role: "demo", usesLeft: DEMO_MAX_USES - uses - 1, email: em });
+        onLogin({ role: "demo", email: em });
         return;
       }
 
@@ -167,15 +153,15 @@ export default function Login({ onLogin }) {
           className="login-demo-btn"
           onClick={handleDemoLogin}
           disabled={loading || demoBlocked}
-          title={demoBlocked ? "Demo access exhausted" : `${DEMO_MAX_USES - demoUses} use${DEMO_MAX_USES - demoUses > 1 ? "s" : ""} remaining`}
+          title={demoBlocked ? "Demo messages exhausted" : `${DEMO_MSG_LIMIT - demoMsgsUsed} free message${DEMO_MSG_LIMIT - demoMsgsUsed > 1 ? "s" : ""} remaining`}
         >
           {loading ? (
             <span className="login-spinner login-spinner-dark" />
           ) : demoBlocked ? (
             <>
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                <rect x="3" y="7.5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
               Demo exhausted
             </>
@@ -186,21 +172,21 @@ export default function Login({ onLogin }) {
               </svg>
               Try Free Demo
               <span className="login-demo-badge">
-                {DEMO_MAX_USES - demoUses} left
+                {DEMO_MSG_LIMIT - demoMsgsUsed} msg free
               </span>
             </>
           )}
         </button>
 
-        {/* Demo access info */}
+        {/* Demo info */}
         <div className="login-footer">
           {demoBlocked ? (
             <span className="login-uses exhausted">
               <svg viewBox="0 0 16 16" fill="none" width="12" height="12">
-                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                <rect x="3" y="7.5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
-              Demo access exhausted
+              Demo messages exhausted — contact admin
             </span>
           ) : (
             <span className="login-uses">
@@ -208,7 +194,7 @@ export default function Login({ onLogin }) {
                 <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
                 <path d="M8 5v3l2 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
-              Demo access · {DEMO_MAX_USES - demoUses} use{DEMO_MAX_USES - demoUses > 1 ? "s" : ""} remaining
+              {DEMO_MSG_LIMIT - demoMsgsUsed} free message{DEMO_MSG_LIMIT - demoMsgsUsed > 1 ? "s" : ""} remaining
             </span>
           )}
         </div>
