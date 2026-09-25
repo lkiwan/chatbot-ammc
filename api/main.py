@@ -86,6 +86,8 @@ _RATE_LOCK = threading.Lock()
 
 @app.middleware("http")
 async def _api_guard(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
     if request.url.path.startswith("/api"):
         if API_TOKEN:
             provided = request.headers.get("x-api-token", "")
