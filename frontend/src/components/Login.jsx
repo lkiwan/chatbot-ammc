@@ -152,7 +152,7 @@ export default function Login({ onLogin }) {
           type="button"
           className="login-demo-btn"
           onClick={handleDemoLogin}
-          disabled={loading || demoBlocked}
+          disabled={loading}
           title={demoBlocked ? "Demo messages exhausted" : `${DEMO_MSG_LIMIT - demoMsgsUsed} free message${DEMO_MSG_LIMIT - demoMsgsUsed > 1 ? "s" : ""} remaining`}
         >
           {loading ? (
@@ -160,19 +160,19 @@ export default function Login({ onLogin }) {
           ) : demoBlocked ? (
             <>
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-                <rect x="3" y="7.5" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                <path d="M2 4h12M2 8h8M2 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
-              Demo exhausted
+              Continue — Browse &amp; PDF only
             </>
           ) : (
             <>
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-                <path d="M8 2l1.5 4.5H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2.5 1.4-4.3L2 6.5h4.5L8 2z" fill="currentColor" opacity=".85"/>
+                <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.4"/>
+                <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
-              Try Free Demo
+              Demo Account
               <span className="login-demo-badge">
-                {DEMO_MSG_LIMIT - demoMsgsUsed} msg free
+                {DEMO_MSG_LIMIT - demoMsgsUsed} chat free
               </span>
             </>
           )}
