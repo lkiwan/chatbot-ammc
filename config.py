@@ -31,10 +31,10 @@ EXTRACTION_DEBUG = os.environ.get("EXTRACTION_DEBUG", "false").lower() == "true"
 # ── LLM ─────────────────────────────────────────────────────────────────────
 LLM_API_KEY = os.environ.get("GROQ_API_KEY", "")
 LLM_BASE_URL = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+LLM_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-specdec")
 
 # ── RAG ─────────────────────────────────────────────────────────────────────
-TOP_K = int(os.environ.get("TOP_K", "10"))
+TOP_K = int(os.environ.get("TOP_K", "6"))
 HISTORY_LIMIT = int(os.environ.get("HISTORY_LIMIT", "8"))
 
 # ── PostgreSQL ──────────────────────────────────────────────────────────────

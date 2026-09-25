@@ -203,10 +203,16 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
           <div className="chat-welcome">
             <div className="chat-welcome-icon">
               <svg viewBox="0 0 56 56" fill="none">
-                <rect width="56" height="56" rx="14" fill="var(--accent-soft)"/>
-                <rect x="10" y="34" width="8" height="14" rx="2" fill="var(--accent)" opacity=".4"/>
-                <rect x="24" y="22" width="8" height="26" rx="2" fill="var(--accent)" opacity=".7"/>
-                <rect x="38" y="12" width="8" height="36" rx="2" fill="var(--accent)"/>
+                <defs>
+                  <linearGradient id="wg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#2563eb"/>
+                    <stop offset="100%" stopColor="#1d4ed8"/>
+                  </linearGradient>
+                </defs>
+                <rect width="56" height="56" rx="16" fill="url(#wg)"/>
+                <rect x="10" y="34" width="8" height="14" rx="2" fill="white" opacity=".4"/>
+                <rect x="24" y="22" width="8" height="26" rx="2" fill="white" opacity=".7"/>
+                <rect x="38" y="12" width="8" height="36" rx="2" fill="white"/>
               </svg>
             </div>
             <h3 className="chat-welcome-title">
@@ -397,13 +403,39 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
 
       {isDemo && demoMsgsUsed >= DEMO_MSG_LIMIT ? (
         <div className="demo-limit-wall">
-          <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-            <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <div className="demo-limit-text">
-            <p className="demo-limit-title">Demo limit reached</p>
-            <p className="demo-limit-sub">You've used your {DEMO_MSG_LIMIT} free messages. Contact the administrator for full access.</p>
+          <div className="demo-limit-left">
+            <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+              <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <div className="demo-limit-text">
+              <p className="demo-limit-title">Chat limit reached</p>
+              <p className="demo-limit-sub">
+                You can still <strong>browse companies and view PDF reports</strong> freely.
+                Contact the admin to unlock full chat access.
+              </p>
+            </div>
+          </div>
+          <div className="demo-limit-pills">
+            <span className="demo-pill allowed">
+              <svg viewBox="0 0 12 12" fill="none" width="10" height="10">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Browse reports
+            </span>
+            <span className="demo-pill allowed">
+              <svg viewBox="0 0 12 12" fill="none" width="10" height="10">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              View PDFs
+            </span>
+            <span className="demo-pill blocked">
+              <svg viewBox="0 0 12 12" fill="none" width="10" height="10">
+                <rect x="2" y="5.5" width="8" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              Chat
+            </span>
           </div>
         </div>
       ) : (
