@@ -1,12 +1,26 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { fetchAnalytics } from "../api.js";
+import { fetchAnalytics, fetchVisitors } from "../api.js";
 
 const REFRESH_MS = 30_000;
 
+function flagOf(code) {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(
+    ...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  );
+}
+
+function formatWhen(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? ts : d.toLocaleString();
+}
+
 export default function AdminDashboard({ onClose }) {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [data, setData]         = useState(null);
+  const [visitors, setVisitors] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const load = useCallback(() => {
@@ -18,6 +32,9 @@ export default function AdminDashboard({ onClose }) {
       })
       .catch(() => setError("Failed to load analytics."))
       .finally(() => setLoading(false));
+    fetchVisitors(300)
+      .then((d) => setVisitors(d.visitors || []))
+      .catch(() => setVisitors([]));
   }, []);
 
   useEffect(() => {
@@ -66,24 +83,29 @@ export default function AdminDashboard({ onClose }) {
         <div className="adash-body">
           {loading && <LoadingSkeleton />}
           {error && !loading && <ErrorState message={error} onRetry={load} />}
-          {data && !loading && <DashboardContent data={data} />}
+          {data && !loading && <DashboardContent data={data} visitors={visitors} />}
         </div>
       </div>
     </div>
   );
 }
 
-function DashboardContent({ data }) {
+function DashboardContent({ data, visitors }) {
   const {
     total_visits,
     unique_visitors_30d,
     total_demo_logins,
     total_demo_messages,
     total_demo_exhausted,
+    unique_demo_visitors,
+    unique_visitors_all,
+    located_visitors,
     device_breakdown,
     visits_per_day,
     demo_logins_per_day,
     demo_exhausted_per_day,
+    top_countries,
+    top_cities,
   } = data;
 
   const totalDevices = Object.values(device_breakdown).reduce((s, v) => s + v, 0);
@@ -107,10 +129,17 @@ function DashboardContent({ data }) {
           color="purple"
         />
         <KpiCard
+          icon={<GlobeIcon />}
+          label="Known Locations"
+          value={located_visitors ?? 0}
+          sub={`${unique_visitors_all ?? 0} IPs geolocated`}
+          color="blue"
+        />
+        <KpiCard
           icon={<UserIcon />}
           label="Demo Logins"
           value={total_demo_logins}
-          sub="all time"
+          sub={`${unique_demo_visitors ?? 0} unique IPs`}
           color="teal"
         />
         <KpiCard
@@ -199,7 +228,143 @@ function DashboardContent({ data }) {
           })}
         </div>
       </div>
+
+      {/* Locations */}
+      <LocationsCard countries={top_countries} cities={top_cities} />
+
+      {/* Visitors — one row per unique IP address */}
+      <div className="adash-card">
+        <div className="adash-card-header">
+          <span className="adash-card-title">Visitors — IP &amp; Location</span>
+          <span className="adash-card-sub">
+            {visitors.length} unique {visitors.length === 1 ? "IP" : "IPs"}, most recent first
+          </span>
+        </div>
+        <VisitorsTable rows={visitors} />
+      </div>
     </>
+  );
+}
+
+function LocationsCard({ countries = [], cities = [] }) {
+  const total = countries.reduce((s, c) => s + c.visitors, 0);
+
+  return (
+    <div className="adash-card">
+      <div className="adash-card-header">
+        <span className="adash-card-title">Locations</span>
+        <span className="adash-card-sub">
+          {total} {total === 1 ? "visitor" : "visitors"} resolved
+        </span>
+      </div>
+      {total === 0 && cities.length === 0 ? (
+        <div className="adash-empty">No location data yet</div>
+      ) : (
+        <div className="adash-geo-grid">
+          <div>
+            <div className="adash-geo-heading">By country</div>
+            <div className="adash-devices">
+              {countries.length === 0 && <div className="adash-empty">Unknown</div>}
+              {countries.map((c) => {
+                const pct = total > 0 ? Math.round((c.visitors / total) * 100) : 0;
+                return (
+                  <div key={c.country_code || c.country} className="adash-device-row">
+                    <div className="adash-device-label">
+                      <span className="adash-flag">{flagOf(c.country_code)}</span>
+                      <span>{c.country}</span>
+                    </div>
+                    <div className="adash-device-bar-wrap">
+                      <div
+                        className="adash-device-bar-fill"
+                        style={{ width: `${pct}%`, background: "var(--adash-blue)" }}
+                      />
+                    </div>
+                    <div className="adash-device-stats">
+                      {c.demo_visitors > 0 && (
+                        <span className="adash-device-count">{c.demo_visitors} demo</span>
+                      )}
+                      <span className="adash-device-count">{c.visitors}</span>
+                      <span className="adash-device-pct">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div className="adash-geo-heading">Top cities</div>
+            <div className="adash-devices">
+              {cities.length === 0 && <div className="adash-empty">Unknown</div>}
+              {cities.map((c) => (
+                <div key={`${c.city}-${c.country_code}`} className="adash-device-row adash-geo-row">
+                  <div className="adash-device-label">
+                    <span className="adash-flag">{flagOf(c.country_code)}</span>
+                    <span>{c.city}</span>
+                    <span className="adash-geo-sub">{c.country}</span>
+                  </div>
+                  <div className="adash-device-stats">
+                    <span className="adash-device-count">{c.visitors}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VisitorsTable({ rows }) {
+  if (!rows || rows.length === 0) {
+    return <div className="adash-empty">No visitor data yet</div>;
+  }
+  return (
+    <div className="adash-table-wrap">
+      <table className="adash-table">
+        <thead>
+          <tr>
+            <th>Location</th>
+            <th>IP address</th>
+            <th>ISP</th>
+            <th>Device</th>
+            <th>Account</th>
+            <th className="adash-num">Visits</th>
+            <th className="adash-num">Msgs</th>
+            <th className="adash-num">Limit hits</th>
+            <th>Last seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((v) => (
+            <tr key={v.ip_hash}>
+              <td>
+                <span className="adash-flag">{flagOf(v.country_code)}</span>
+                <span className="adash-loc">{v.location}</span>
+              </td>
+              <td><code className="adash-ip">{v.ip || "—"}</code></td>
+              <td className="adash-cell-muted">{v.isp || "—"}</td>
+              <td>
+                <span className={`adash-chip adash-chip-${v.device}`}>{v.device}</span>
+              </td>
+              <td>
+                {v.role === "demo" ? (
+                  <span className="adash-chip adash-chip-demo">demo</span>
+                ) : (
+                  <span className="adash-cell-muted">—</span>
+                )}
+              </td>
+              <td className="adash-num">{v.visits}</td>
+              <td className="adash-num">{v.demo_messages}</td>
+              <td className={`adash-num ${v.demo_exhausted ? "adash-num-hot" : ""}`}>
+                {v.demo_exhausted}
+              </td>
+              <td className="adash-cell-muted">{formatWhen(v.last_seen)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -287,7 +452,7 @@ function LoadingSkeleton() {
   return (
     <div className="adash-skeleton">
       <div className="adash-kpi-grid">
-        {[0,1,2,3].map((i) => (
+        {[0,1,2,3,4,5].map((i) => (
           <div key={i} className="adash-kpi-card adash-skeleton-card">
             <div className="sk-line sk-line-sm" />
             <div className="sk-line sk-line-lg" />
@@ -335,6 +500,15 @@ function UsersIcon() {
       <path d="M1 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <circle cx="11.5" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.2"/>
       <path d="M13.5 13c0-1.9-1-3.5-2.5-4.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+      <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M1.8 8h12.4M8 1.8c1.6 1.7 2.4 3.9 2.4 6.2S9.6 12.5 8 14.2C6.4 12.5 5.6 10.3 5.6 8s.8-4.5 2.4-6.2z" stroke="currentColor" strokeWidth="1.1"/>
     </svg>
   );
 }

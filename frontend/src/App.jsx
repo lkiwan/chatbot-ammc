@@ -59,10 +59,15 @@ export default function App() {
     setActiveSource(null);
   }, [activeCompany, activeYear]);
 
+  // One visit per page load, so reloads and anonymous browsing are counted.
+  // The session (if any) is already in sessionStorage at mount time.
+  useEffect(() => {
+    trackEvent("visit", loadSession()?.role || "");
+  }, []);
+
   const handleLogin = (authData) => {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(authData));
     setAuth(authData);
-    trackEvent("visit");
   };
 
   const handleLogout = () => {

@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from api.analytics import append_event, get_summary
+from api.analytics import append_event, get_summary, get_visitors, is_private_ip
 
 from build_index import (build_index, find_pdfs, iter_reports, load_registry,
                          load_scraper_meta)
@@ -87,6 +87,28 @@ _RATE_HITS: dict[str, deque[float]] = {}
 _RATE_LOCK = threading.Lock()
 
 
+def _client_ip(request: Request) -> str:
+    """Real visitor IP, honouring the reverse proxy in front of the app.
+
+    Production binds the container to loopback only (docker-compose.prod.yml),
+    so request.client.host is the proxy/Cloudflare edge and every visitor would
+    otherwise collapse into a single identity with a "Private Network" location.
+    These headers are only trustworthy because nothing else can reach the port.
+    """
+    for header in ("cf-connecting-ip", "x-real-ip"):
+        value = request.headers.get(header, "").strip()
+        if value:
+            return value
+    forwarded = request.headers.get("x-forwarded-for", "")
+    hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+    for hop in hops:
+        if not is_private_ip(hop):
+            return hop
+    if hops:
+        return hops[0]
+    return request.client.host if request.client else ""
+
+
 @app.middleware("http")
 async def _api_guard(request: Request, call_next):
     if request.method == "OPTIONS":
@@ -102,7 +124,7 @@ async def _api_guard(request: Request, call_next):
             if not secrets.compare_digest(provided, API_TOKEN):
                 return JSONResponse({"detail": "unauthorized"}, status_code=401)
         if request.url.path.rstrip("/") in _CHAT_PATHS:
-            ip = request.client.host if request.client else "unknown"
+            ip = _client_ip(request) or "unknown"
             now = time.time()
             with _RATE_LOCK:
                 hits = _RATE_HITS.setdefault(ip, deque())
@@ -191,19 +213,24 @@ def _total_counts():
 
 class TrackRequest(BaseModel):
     type: Literal["visit", "demo_login", "demo_message", "demo_exhausted"]
+    role: Literal["", "demo", "admin"] = ""
 
 
 @app.post("/api/track")
 async def track(req: TrackRequest, request: Request):
     ua = request.headers.get("user-agent", "")
-    ip = request.client.host if request.client else ""
-    append_event(req.type, ua=ua, ip=ip)
+    append_event(req.type, ua=ua, ip=_client_ip(request), role=req.role)
     return {"ok": True}
 
 
 @app.get("/api/analytics")
 def analytics():
     return get_summary()
+
+
+@app.get("/api/analytics/visitors")
+def analytics_visitors(limit: int = Query(200, ge=1, le=1000)):
+    return {"visitors": get_visitors(limit)}
 
 
 class ChatRequest(BaseModel):

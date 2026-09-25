@@ -32,12 +32,14 @@ export const fetchCompanies = () => request("/companies");
 export const fetchPdfs      = () => request("/pdfs");
 export const reingest       = () => request("/ingest", { method: "POST" });
 export const fetchAnalytics = () => request("/analytics");
-export const trackEvent     = (type) =>
-  request("/track", {
+export const fetchVisitors  = (limit = 200) => request(`/analytics/visitors?limit=${limit}`);
+export function trackEvent(type, role = "") {
+  return request("/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type }),
+    body: JSON.stringify({ type, role }),
   }).catch(() => {});
+}
 
 export async function sendChat(message, history, { rapport, company, year, sector } = {}) {
   return request("/chat", {

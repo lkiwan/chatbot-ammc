@@ -30,7 +30,7 @@ export default function Login({ onLogin }) {
     if (loading) return;
     setError("");
     setLoading(true);
-    trackEvent("demo_login");
+    trackEvent("demo_login", "demo");
     setTimeout(() => {
       onLogin({ role: "demo", email: DEMO_EMAIL });
     }, 400);
@@ -53,6 +53,7 @@ export default function Login({ onLogin }) {
 
       // Demo
       if (em === DEMO_EMAIL.toLowerCase() && password === DEMO_PASSWORD) {
+        trackEvent("demo_login", "demo");
         onLogin({ role: "demo", email: em });
         return;
       }
