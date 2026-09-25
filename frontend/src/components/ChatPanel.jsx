@@ -203,13 +203,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
     <div className="chat">
       <div className="chat-head">
         <div className="chat-head-left">
-          <div className="chat-head-brand">
-            <svg viewBox="0 0 16 16" fill="none" width="11" height="11">
-              <rect x="1"  y="9"  width="4"  height="6"  rx="1" fill="currentColor" opacity=".5"/>
-              <rect x="6"  y="5"  width="4"  height="10" rx="1" fill="currentColor" opacity=".75"/>
-              <rect x="11" y="1"  width="4"  height="14" rx="1" fill="currentColor"/>
-            </svg>
-          </div>
+          <img src="/logo.png" alt="AnnualEdge" className="chat-head-brand-logo" />
           <div className="chat-context">
             <span className="chat-context-scope">
               {companyName || "Tous les rapports"}
@@ -237,18 +231,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         {messages.length === 0 && !busy && (
           <div className="chat-welcome">
             <div className="chat-welcome-icon">
-              <svg viewBox="0 0 56 56" fill="none">
-                <defs>
-                  <linearGradient id="wg" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#2563eb"/>
-                    <stop offset="100%" stopColor="#1d4ed8"/>
-                  </linearGradient>
-                </defs>
-                <rect width="56" height="56" rx="16" fill="url(#wg)"/>
-                <rect x="10" y="34" width="8" height="14" rx="2" fill="white" opacity=".4"/>
-                <rect x="24" y="22" width="8" height="26" rx="2" fill="white" opacity=".7"/>
-                <rect x="38" y="12" width="8" height="36" rx="2" fill="white"/>
-              </svg>
+              <img src="/logo.png" alt="AnnualEdge" />
             </div>
             <h3 className="chat-welcome-title">
               {companyName ? `Analyse — ${companyName}` : "Analyse multi-rapports"}
@@ -272,7 +255,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
           <div key={i} className={`msg ${m.role}`}>
             {m.role === "assistant" && (
               <div className="msg-avatar">
-                <span className="msg-avatar-initials">AE</span>
+                <img src="/logo.png" alt="AE" className="msg-avatar-logo" />
               </div>
             )}
             <div className="msg-content">

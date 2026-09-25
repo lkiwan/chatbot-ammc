@@ -98,7 +98,7 @@ export default function App() {
             <span /><span /><span />
           </button>
           <div className="brand">
-            <span className="brand-mark">AE</span>
+            <img src="/logo.png" alt="AnnualEdge" className="brand-logo" />
             <span className="brand-name">AnnualEdge</span>
             <span className="brand-sep" />
             <span className="brand-sub">Financial Intelligence</span>

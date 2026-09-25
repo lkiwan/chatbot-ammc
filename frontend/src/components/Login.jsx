@@ -69,8 +69,7 @@ export default function Login({ onLogin }) {
 
         {/* Brand */}
         <div className="login-brand">
-          <span className="login-mark">AE</span>
-          <h1 className="login-title">AnnualEdge</h1>
+          <img src="/logo.png" alt="AnnualEdge" className="login-logo" />
           <p className="login-sub">Financial Intelligence Platform</p>
         </div>
 
