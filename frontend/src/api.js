@@ -17,6 +17,13 @@ async function request(path, options) {
   return res.json();
 }
 
+export function pdfUrl(url, page) {
+  const q = new URLSearchParams({ url });
+  if (API_TOKEN) q.set("token", API_TOKEN);
+  const base = `${API_BASE}/api/pdf?${q.toString()}`;
+  return page ? `${base}#page=${page}` : base;
+}
+
 export const fetchHealth    = () => request("/health");
 export const fetchReports   = () => request("/reports");
 export const fetchMetrics   = () => request("/metrics");

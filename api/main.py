@@ -80,6 +80,7 @@ app.add_middleware(
 )
 
 _CHAT_PATHS = {"/api/chat", "/api/chat/stream"}
+_PDF_PATH = "/api/pdf"
 _RATE_HITS: dict[str, deque[float]] = {}
 _RATE_LOCK = threading.Lock()
 
@@ -94,6 +95,8 @@ async def _api_guard(request: Request, call_next):
             auth = request.headers.get("authorization", "")
             if auth[:7].lower() == "bearer ":
                 provided = auth[7:].strip()
+            if not provided and request.method == "GET" and request.url.path.rstrip("/") == _PDF_PATH:
+                provided = request.query_params.get("token", "")
             if not secrets.compare_digest(provided, API_TOKEN):
                 return JSONResponse({"detail": "unauthorized"}, status_code=401)
         if request.url.path.rstrip("/") in _CHAT_PATHS:

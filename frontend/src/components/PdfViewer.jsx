@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchPdfs } from "../api.js";
+import { fetchPdfs, pdfUrl } from "../api.js";
 
-const proxied = (url, page) => {
-  const base = `/api/pdf?url=${encodeURIComponent(url)}`;
-  return page ? `${base}#page=${page}` : base;
-};
+const proxied = (url, page) => pdfUrl(url, page);
 
 const cleanLabel = (label) =>
   typeof label === "string" ? label.replace(/,\s*p\.?\s*\d+$/i, "") : "";
