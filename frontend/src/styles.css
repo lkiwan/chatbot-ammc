@@ -1632,6 +1632,56 @@ input, textarea { font-family: var(--sans); }
 .adash-device-count { font-size: 12px; font-weight: 700; color: var(--adash-text); }
 .adash-device-pct   { font-size: 11px; color: var(--adash-muted); min-width: 32px; text-align: right; }
 
+/* Locations */
+.adash-geo-grid {
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px;
+}
+@media (max-width: 900px) { .adash-geo-grid { grid-template-columns: 1fr; } }
+.adash-geo-heading {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--adash-muted);
+  margin-bottom: 14px;
+}
+.adash-geo-row { grid-template-columns: 1fr auto; }
+.adash-geo-sub { font-size: 11px; color: var(--adash-muted); }
+.adash-flag { font-size: 15px; line-height: 1; margin-right: 4px; }
+
+/* Visitors table */
+.adash-table-wrap { overflow-x: auto; }
+.adash-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px;
+}
+.adash-table th {
+  text-align: left; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--adash-muted); padding: 0 12px 10px 0;
+  border-bottom: 1px solid var(--adash-border); white-space: nowrap;
+}
+.adash-table td {
+  padding: 9px 12px 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  color: var(--adash-text); vertical-align: middle; white-space: nowrap;
+}
+.adash-table tr:last-child td { border-bottom: none; }
+.adash-table tbody tr:hover td { background: rgba(255,255,255,.03); }
+.adash-loc { font-weight: 500; }
+.adash-cell-muted { color: var(--adash-muted); }
+.adash-ip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; color: var(--adash-teal);
+}
+.adash-num { text-align: right; font-variant-numeric: tabular-nums; }
+.adash-num-hot { color: var(--adash-rose); font-weight: 700; }
+.adash-chip {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600;
+  background: rgba(255,255,255,.06); color: var(--adash-muted);
+}
+.adash-chip-desktop { background: rgba(59,130,246,.15);  color: var(--adash-blue); }
+.adash-chip-mobile  { background: rgba(20,184,166,.15);  color: var(--adash-teal); }
+.adash-chip-tablet  { background: rgba(139,92,246,.15);  color: var(--adash-purple); }
+.adash-chip-demo    { background: rgba(245,158,11,.15);  color: var(--adash-amber); }
+
 /* Empty / error */
 .adash-empty {
   font-size: 12px; color: var(--adash-muted);
