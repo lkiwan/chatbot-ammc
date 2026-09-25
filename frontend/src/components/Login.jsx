@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { trackEvent } from "../api.js";
 
 // ── Credentials — change these as needed ──────────────────────
 const DEMO_EMAIL    = "demo@annualedge.com";
@@ -29,6 +30,7 @@ export default function Login({ onLogin }) {
     if (loading) return;
     setError("");
     setLoading(true);
+    trackEvent("demo_login");
     setTimeout(() => {
       onLogin({ role: "demo", email: DEMO_EMAIL });
     }, 400);

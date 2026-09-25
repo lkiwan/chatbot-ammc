@@ -31,6 +31,13 @@ export const fetchTables    = (rapport) => request(`/tables${rapport ? `?rapport
 export const fetchCompanies = () => request("/companies");
 export const fetchPdfs      = () => request("/pdfs");
 export const reingest       = () => request("/ingest", { method: "POST" });
+export const fetchAnalytics = () => request("/analytics");
+export const trackEvent     = (type) =>
+  fetch("/api/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type }),
+  }).catch(() => {});
 
 export async function sendChat(message, history, { rapport, company, year, sector } = {}) {
   return request("/chat", {

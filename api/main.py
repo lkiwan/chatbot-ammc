@@ -13,12 +13,15 @@ import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # api/ dir for local modules
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from analytics import append_event, get_summary
 
 from build_index import (build_index, find_pdfs, iter_reports, load_registry,
                          load_scraper_meta)
@@ -185,6 +188,23 @@ def _total_counts():
     except Exception:
         chunks = 0
     return reg, store, chunks
+
+
+class TrackRequest(BaseModel):
+    type: str  # "visit" | "demo_login" | "demo_message"
+
+
+@app.post("/api/track")
+async def track(req: TrackRequest, request: Request):
+    ua = request.headers.get("user-agent", "")
+    ip = request.client.host if request.client else ""
+    append_event(req.type, ua=ua, ip=ip)
+    return {"ok": True}
+
+
+@app.get("/api/analytics")
+def analytics():
+    return get_summary()
 
 
 class ChatRequest(BaseModel):

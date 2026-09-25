@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { fetchHealth, fetchCompanies, fetchReports } from "./api.js";
+import { fetchHealth, fetchCompanies, fetchReports, trackEvent } from "./api.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import PdfViewer from "./components/PdfViewer.jsx";
 import Splitter from "./components/Splitter.jsx";
 import Login from "./components/Login.jsx";
+import AdminDashboard from "./components/AdminDashboard.jsx";
 
 const LS_KEY      = "ammc-layout";
 const SESSION_KEY = "ae-session";
@@ -31,6 +32,7 @@ function loadSession() {
 
 export default function App() {
   const [auth, setAuth] = useState(loadSession);
+  const [adminView, setAdminView] = useState(false);
 
   const [health, setHealth]       = useState(null);
   const [companies, setCompanies] = useState([]);
@@ -60,10 +62,12 @@ export default function App() {
   const handleLogin = (authData) => {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(authData));
     setAuth(authData);
+    trackEvent("visit");
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem(SESSION_KEY);
+    setAdminView(false);
     setAuth(null);
     setCompanies([]);
     setStats(null);
@@ -123,6 +127,20 @@ export default function App() {
           </button>
           <StatusBadge health={health} />
           <div className="topbar-user">
+            {auth.role === "admin" && (
+              <button
+                className={`btn-dashboard ${adminView ? "active" : ""}`}
+                onClick={() => setAdminView((v) => !v)}
+                title="Analytics Dashboard"
+              >
+                <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+                  <rect x="1" y="9" width="3" height="5" rx=".8" fill="currentColor" opacity=".6"/>
+                  <rect x="6" y="5" width="3" height="9" rx=".8" fill="currentColor" opacity=".8"/>
+                  <rect x="11" y="1" width="3" height="13" rx=".8" fill="currentColor"/>
+                </svg>
+                Dashboard
+              </button>
+            )}
             <span className="topbar-user-role">
               {auth.role === "admin" ? "Admin" : "Demo"}
             </span>
@@ -200,6 +218,10 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {adminView && auth.role === "admin" && (
+        <AdminDashboard onClose={() => setAdminView(false)} />
+      )}
     </div>
   );
 }

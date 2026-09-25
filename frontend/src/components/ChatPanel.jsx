@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { sendChatStream } from "../api.js";
+import { sendChatStream, trackEvent } from "../api.js";
 import Markdown from "./Markdown.jsx";
 
 const LS_KEY       = "ammc-qa-history";
@@ -96,6 +96,23 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
     setExpandedIdx(null);
   };
 
+  const restoreConversation = (item) => {
+    const thread = item.thread?.length
+      ? item.thread.map((m) => ({ ...m, sources: m.sources || [] }))
+      : [
+          { role: "user",      content: item.question, sources: [] },
+          { role: "assistant", content: item.answer,   sources: [] },
+        ];
+    setMessages(thread);
+    setShowHistory(false);
+    setExpandedIdx(null);
+    setError(null);
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      textRef.current?.focus();
+    }, 50);
+  };
+
   const submit = async (text) => {
     const question = (text ?? input).trim();
     if (!question || busy) return;
@@ -115,6 +132,8 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
       const next = used + 1;
       localStorage.setItem(DEMO_MSG_KEY, String(next));
       setDemoMsgsUsed(next);
+      trackEvent("demo_message");
+      if (next >= DEMO_MSG_LIMIT) trackEvent("demo_exhausted");
     }
 
     setBusy(true);
@@ -148,7 +167,12 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
               next[idx] = { ...next[idx], sources };
               return next;
             });
-            // Save Q&A pair to persistent history
+            // Save Q&A pair + full thread to persistent history
+            const savedThread = [
+              ...history,
+              { role: "user",      content: question },
+              { role: "assistant", content: answerText },
+            ];
             setQaHistory((h) => [
               {
                 question,
@@ -156,6 +180,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
                 companyName: companyName || null,
                 year: year ? String(year) : null,
                 timestamp: Date.now(),
+                thread: savedThread,
               },
               ...h,
             ].slice(0, MAX_HISTORY));
@@ -384,18 +409,29 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
                       <div className="chat-history-answer">
                         <Markdown>{item.answer}</Markdown>
                       </div>
-                      <button
-                        className="chat-history-reask"
-                        onClick={() => {
-                          setInput(item.question);
-                          if (textRef.current) {
-                            textRef.current.focus();
-                            setTimeout(grow, 0);
-                          }
-                        }}
-                      >
-                        Reposer cette question →
-                      </button>
+                      <div className="chat-history-actions">
+                        <button
+                          className="chat-history-continue"
+                          onClick={() => restoreConversation(item)}
+                        >
+                          <svg viewBox="0 0 16 16" fill="none" width="11" height="11">
+                            <path d="M2 8h10M8 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Continuer cette conversation
+                        </button>
+                        <button
+                          className="chat-history-reask"
+                          onClick={() => {
+                            setInput(item.question);
+                            if (textRef.current) {
+                              textRef.current.focus();
+                              setTimeout(grow, 0);
+                            }
+                          }}
+                        >
+                          Reposer seule →
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
