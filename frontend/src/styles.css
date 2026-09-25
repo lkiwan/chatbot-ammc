@@ -799,12 +799,25 @@ input, textarea { font-family: var(--sans); }
 .chat-history-item:hover { border-color: #cbd5e1; }
 .chat-history-item.expanded { border-color: var(--accent); }
 
+.chat-history-item-row {
+  display: flex; align-items: stretch;
+}
 .chat-history-item-head {
-  width: 100%; display: flex; flex-direction: column; gap: 3px;
+  flex: 1; display: flex; flex-direction: column; gap: 3px;
   align-items: flex-start;
   background: none; border: none; padding: 8px 10px;
   cursor: pointer; text-align: left; position: relative;
 }
+.chat-history-delete {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; flex-shrink: 0;
+  background: none; border: none; border-left: 1px solid var(--line);
+  color: var(--muted); cursor: pointer;
+  opacity: 0; transition: opacity .15s, color .15s, background .15s;
+  border-radius: 0 var(--radius) 0 0;
+}
+.chat-history-item:hover .chat-history-delete { opacity: 1; }
+.chat-history-delete:hover { color: var(--red); background: #fef2f2; }
 .chat-history-item-meta {
   display: flex; align-items: center; gap: 7px;
 }

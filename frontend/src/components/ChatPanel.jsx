@@ -329,29 +329,45 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
             <div className="chat-history-list">
               {qaHistory.map((item, i) => (
                 <div key={i} className={`chat-history-item${expandedIdx === i ? " expanded" : ""}`}>
-                  <button
-                    className="chat-history-item-head"
-                    onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
-                  >
-                    <div className="chat-history-item-meta">
-                      {item.companyName && (
-                        <span className="chat-history-badge">{item.companyName}{item.year ? ` · ${item.year}` : ""}</span>
-                      )}
-                      <span className="chat-history-time">
-                        {new Date(item.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                    <p className="chat-history-question">
-                      {item.question.length > 80 ? item.question.slice(0, 80) + "…" : item.question}
-                    </p>
-                    <svg
-                      viewBox="0 0 16 16" fill="none" width="11" height="11"
-                      className="chat-history-chevron"
-                      style={{ transform: expandedIdx === i ? "rotate(180deg)" : "rotate(0deg)" }}
+                  <div className="chat-history-item-row">
+                    <button
+                      className="chat-history-item-head"
+                      onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
                     >
-                      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
+                      <div className="chat-history-item-meta">
+                        {item.companyName && (
+                          <span className="chat-history-badge">{item.companyName}{item.year ? ` · ${item.year}` : ""}</span>
+                        )}
+                        <span className="chat-history-time">
+                          {new Date(item.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="chat-history-question">
+                        {item.question.length > 80 ? item.question.slice(0, 80) + "…" : item.question}
+                      </p>
+                      <svg
+                        viewBox="0 0 16 16" fill="none" width="11" height="11"
+                        className="chat-history-chevron"
+                        style={{ transform: expandedIdx === i ? "rotate(180deg)" : "rotate(0deg)" }}
+                      >
+                        <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    <button
+                      className="chat-history-delete"
+                      title="Supprimer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQaHistory((h) => h.filter((_, idx) => idx !== i));
+                        if (expandedIdx === i) setExpandedIdx(null);
+                        else if (expandedIdx > i) setExpandedIdx(expandedIdx - 1);
+                      }}
+                    >
+                      <svg viewBox="0 0 16 16" fill="none" width="12" height="12">
+                        <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
 
                   {expandedIdx === i && (
                     <div className="chat-history-item-body">
