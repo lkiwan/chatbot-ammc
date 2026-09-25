@@ -5,7 +5,7 @@ import Markdown from "./Markdown.jsx";
 const LS_KEY       = "ammc-qa-history";
 const MAX_HISTORY  = 20;
 const DEMO_MSG_KEY   = "ae-demo-msgs";
-const DEMO_MSG_LIMIT = 2;
+const DEMO_MSG_LIMIT = 5;
 
 function getDemoMsgsUsed() {
   return parseInt(localStorage.getItem(DEMO_MSG_KEY) || "0", 10);
@@ -178,14 +178,20 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
     <div className="chat">
       <div className="chat-head">
         <div className="chat-head-left">
-          <div className="chat-scope-badge">
-            <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
-              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
-              <path d="M5.5 8l2 2 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          <div className="chat-head-brand">
+            <svg viewBox="0 0 16 16" fill="none" width="11" height="11">
+              <rect x="1"  y="9"  width="4"  height="6"  rx="1" fill="currentColor" opacity=".5"/>
+              <rect x="6"  y="5"  width="4"  height="10" rx="1" fill="currentColor" opacity=".75"/>
+              <rect x="11" y="1"  width="4"  height="14" rx="1" fill="currentColor"/>
             </svg>
-            {scopeLabel}
           </div>
-          {sector && <span className="chat-sector">{sector}</span>}
+          <div className="chat-context">
+            <span className="chat-context-scope">
+              {companyName || "Tous les rapports"}
+            </span>
+            {year && <span className="chat-context-year">{year}</span>}
+            {sector && <span className="chat-context-sector">{sector}</span>}
+          </div>
         </div>
         <div className="chat-head-right">
           <span className="chat-online">
@@ -193,6 +199,10 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
             En ligne
           </span>
           <button className="btn-new-session" onClick={newSession}>
+            <svg viewBox="0 0 16 16" fill="none" width="12" height="12">
+              <path d="M13.5 8A5.5 5.5 0 1 1 10.2 3.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M10.5 1.5v3h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
             Nouvelle session
           </button>
         </div>
@@ -237,10 +247,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
           <div key={i} className={`msg ${m.role}`}>
             {m.role === "assistant" && (
               <div className="msg-avatar">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-                  <circle cx="12" cy="12" r="10" fill="var(--accent)"/>
-                  <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
+                <span className="msg-avatar-initials">AE</span>
               </div>
             )}
             <div className="msg-content">
@@ -286,10 +293,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         {busy && !messages[streamIdxRef.current]?.content && (
           <div className="msg assistant">
             <div className="msg-avatar">
-              <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-                <circle cx="12" cy="12" r="10" fill="var(--accent)"/>
-                <path d="M8 12h8M12 8v8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
+              <span className="msg-avatar-initials">AE</span>
             </div>
             <div className="msg-content">
               <div className="bubble typing">

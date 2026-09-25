@@ -9,7 +9,7 @@ const ADMIN_PASSWORD = "Edge@Admin25";
 // ─────────────────────────────────────────────────────────────
 
 const DEMO_MSG_KEY   = "ae-demo-msgs";
-const DEMO_MSG_LIMIT = 2;
+const DEMO_MSG_LIMIT = 5;
 
 function getDemoMsgsUsed() {
   return parseInt(localStorage.getItem(DEMO_MSG_KEY) || "0", 10);

@@ -369,7 +369,7 @@ def answer_stream(
     messages = build_messages(question, hits, history)
     try:
         response = client.chat.completions.create(
-            model=LLM_MODEL, messages=messages, temperature=0.2, max_tokens=800
+            model=LLM_MODEL, messages=messages, temperature=0.2, max_tokens=600
         )
         if not response.choices or not response.choices[0].message:
             yield ("L'API a retourne une reponse vide.", sources)
@@ -409,7 +409,7 @@ def answer_stream_tokens(
     messages = build_messages(question, hits, history)
     try:
         stream = client.chat.completions.create(
-            model=LLM_MODEL, messages=messages, temperature=0.2, max_tokens=800, stream=True
+            model=LLM_MODEL, messages=messages, temperature=0.2, max_tokens=600, stream=True
         )
         full = ""
         for chunk in stream:

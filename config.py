@@ -34,7 +34,7 @@ LLM_BASE_URL = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 LLM_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-specdec")
 
 # ── RAG ─────────────────────────────────────────────────────────────────────
-TOP_K = int(os.environ.get("TOP_K", "6"))
+TOP_K = int(os.environ.get("TOP_K", "4"))
 HISTORY_LIMIT = int(os.environ.get("HISTORY_LIMIT", "8"))
 
 # ── PostgreSQL ──────────────────────────────────────────────────────────────
