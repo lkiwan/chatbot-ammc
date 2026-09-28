@@ -1747,3 +1747,146 @@ input, textarea { font-family: var(--sans); }
   border-top: 1px solid var(--adash-border);
   padding-top: 12px;
 }
+
+/* ─── Dashboard: tabs ─────────────────────────────────────────────────── */
+.adash-tabs {
+  display: flex; gap: 4px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--adash-border);
+  background: rgba(255,255,255,.02);
+  flex-shrink: 0;
+}
+.adash-tab {
+  appearance: none; border: none; background: transparent;
+  color: var(--adash-muted);
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 11px 14px; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .12s, border-color .12s;
+}
+.adash-tab:hover { color: var(--adash-text); }
+.adash-tab.active { color: var(--adash-blue); border-bottom-color: var(--adash-blue); }
+
+/* ─── Dashboard: segmented metric switch ─────────────────────────────── */
+.adash-seg { display: flex; gap: 3px; }
+.adash-seg-btn {
+  appearance: none; cursor: pointer; font: inherit;
+  font-size: 11px; font-weight: 600;
+  padding: 4px 9px; border-radius: 6px;
+  border: 1px solid var(--adash-border);
+  background: transparent; color: var(--adash-muted);
+  transition: all .12s;
+}
+.adash-seg-btn:hover { color: var(--adash-text); }
+.adash-seg-btn.active {
+  background: rgba(59,130,246,.15);
+  border-color: rgba(59,130,246,.4);
+  color: var(--adash-blue);
+}
+
+/* ─── Dashboard: search + select ──────────────────────────────────────── */
+.adash-search { display: flex; align-items: center; gap: 6px; }
+.adash-search-input {
+  appearance: none; font: inherit; font-size: 12px;
+  padding: 6px 10px; border-radius: 6px;
+  border: 1px solid var(--adash-border);
+  background: rgba(0,0,0,.25); color: var(--adash-text);
+  width: 250px; outline: none;
+}
+.adash-search-input::placeholder { color: var(--adash-muted); }
+.adash-search-input:focus { border-color: var(--adash-blue); }
+.adash-search-clear {
+  appearance: none; border: none; cursor: pointer;
+  background: transparent; color: var(--adash-muted);
+  font-size: 16px; line-height: 1; padding: 0 3px;
+}
+.adash-search-clear:hover { color: var(--adash-rose); }
+.adash-select {
+  appearance: none; font: inherit; font-size: 12px;
+  padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--adash-border);
+  background: rgba(0,0,0,.25); color: var(--adash-text);
+  outline: none;
+}
+.adash-count-note { display: block; padding: 0 0 10px; }
+
+/* ─── Dashboard: 30-day sparkline ─────────────────────────────────────── */
+.adash-spark {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 90px; padding-top: 6px;
+}
+.adash-spark-col { flex: 1; height: 100%; min-width: 0; }
+.adash-spark-track {
+  height: 100%; display: flex; align-items: flex-end;
+  border-radius: 2px; background: rgba(255,255,255,.02);
+}
+.adash-spark-fill {
+  width: 100%; border-radius: 2px; min-height: 1px;
+  transition: height .2s;
+}
+.adash-spark-axis {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: var(--adash-muted);
+  padding-top: 8px;
+}
+
+/* ─── Dashboard: hour heatmap ─────────────────────────────────────────── */
+.adash-heat {
+  display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px;
+}
+.adash-heat-cell {
+  aspect-ratio: 1 / 1.15; border-radius: 3px;
+  background: var(--adash-blue);
+  position: relative; cursor: default;
+}
+.adash-heat-h {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: rgba(255,255,255,.75);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Dashboard: metric strip ─────────────────────────────────────────── */
+.adash-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.adash-metric {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 11px 13px; border-radius: 8px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid var(--adash-border);
+}
+.adash-metric-val {
+  font-size: 17px; font-weight: 800;
+  letter-spacing: -.03em; color: var(--adash-text);
+}
+.adash-metric-lbl { font-size: 11px; color: var(--adash-muted); }
+
+/* ─── Dashboard: table extras ─────────────────────────────────────────── */
+.adash-chip-fail { background: rgba(244,63,94,.15); color: var(--adash-rose); }
+.adash-question {
+  max-width: 340px; color: var(--adash-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.adash-list-name {
+  max-width: 190px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  display: inline-block; vertical-align: bottom;
+}
+.adash-clip {
+  max-width: 160px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.adash-clickable { cursor: pointer; }
+.adash-clickable:hover td { background: rgba(255,255,255,.05); }
+.adash-detail-row td { background: rgba(0,0,0,.25); }
+.adash-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; padding: 4px 2px;
+}
+.adash-detail > div { display: flex; flex-direction: column; gap: 2px; }
+.adash-detail-lbl { font-size: 10.5px; color: var(--adash-muted); }
+.adash-detail-val { font-size: 12.5px; font-weight: 600; color: var(--adash-text); }

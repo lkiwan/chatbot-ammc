@@ -187,9 +187,17 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
           },
         }
       );
-    } catch {
+    } catch (err) {
       setError("Le modèle n'a pas répondu. Réessayez dans un instant.");
       setMessages((m) => m.filter((_, i) => i !== streamIdxRef.current));
+      // The server already logs the question itself; this adds the client-side
+      // failure reason (rate limit, network drop) that the server can't see.
+      trackEvent("error", isDemo ? "demo" : "admin", {
+        kind: "chat_failed",
+        error: err?.status ? `http_${err.status}` : (err?.message || "network"),
+        company: company || "",
+        year: year ? String(year) : "",
+      });
     } finally {
       setBusy(false);
     }
@@ -273,7 +281,17 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
                       <span key={j} className="source-wrap">
                         <button
                           className="source-tag"
-                          onClick={() => onOpenSource(s)}
+                          onClick={() => {
+                            onOpenSource(s);
+                            // A source click is the strongest signal that the
+                            // citation was actually followed, not just shown.
+                            trackEvent("pdf_open", isDemo ? "demo" : "admin", {
+                              report: s.label || "",
+                              page: s.page ?? 1,
+                              company: companyName || company || "",
+                              year: year ? String(year) : "",
+                            });
+                          }}
                           title={`Ouvrir p.${s.page ?? 1} dans la visionneuse`}
                         >
                           {s.label}

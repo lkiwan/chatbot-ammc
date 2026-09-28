@@ -24,6 +24,39 @@ export function pdfUrl(url, page) {
   return page ? `${base}#page=${page}` : base;
 }
 
+const SESSION_KEY = "ae-vid";
+
+/**
+ * Stable per-tab id, so the backend can count "sessions" (a fresh tab or a new
+ * login) separately from visits and from raw request volume.
+ */
+export function sessionId() {
+  try {
+    let id = sessionStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = Math.random().toString(36).slice(2, 10);
+      sessionStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    return "nosession";
+  }
+}
+
+function deviceMeta() {
+  const meta = { session: sessionId() };
+  try {
+    if (screen?.width && screen?.height) meta.screen = `${screen.width}x${screen.height}`;
+    if (navigator.language) meta.lang = navigator.language;
+  } catch {}
+  try {
+    if (document.referrer && !document.referrer.startsWith(location.origin)) {
+      meta.referrer = document.referrer;
+    }
+  } catch {}
+  return meta;
+}
+
 export const fetchHealth    = () => request("/health");
 export const fetchReports   = () => request("/reports");
 export const fetchMetrics   = () => request("/metrics");
@@ -33,19 +66,36 @@ export const fetchPdfs      = () => request("/pdfs");
 export const reingest       = () => request("/ingest", { method: "POST" });
 export const fetchAnalytics = () => request("/analytics");
 export const fetchVisitors  = (limit = 200) => request(`/analytics/visitors?limit=${limit}`);
-export function trackEvent(type, role = "") {
+// One request for the whole dashboard — see the note on the endpoint.
+export const fetchAnalyticsDeep = (visitors = 300) =>
+  request(`/analytics/deep?visitors=${visitors}`);
+
+export function trackEvent(type, role = "", meta = {}) {
   return request("/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, role }),
+    body: JSON.stringify({ type, role, meta: { ...deviceMeta(), ...meta } }),
   }).catch(() => {});
+}
+
+export function trackError(kind, detail = "") {
+  return trackEvent("error", "", { kind, error: detail });
+}
+
+/** Role of the current session, for analytics attribution. Never used for auth. */
+function currentRole() {
+  try {
+    return JSON.parse(sessionStorage.getItem("ae-session") || "{}").role || "";
+  } catch {
+    return "";
+  }
 }
 
 export async function sendChat(message, history, { rapport, company, year, sector } = {}) {
   return request("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history, rapport, company, year, sector }),
+    body: JSON.stringify({ message, history, rapport, company, year, sector, role: currentRole() }),
   });
 }
 
@@ -53,11 +103,13 @@ export async function sendChatStream(message, history, { rapport, company, year,
   const res = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ message, history, rapport, company, year, sector }),
+    body: JSON.stringify({ message, history, rapport, company, year, sector, role: currentRole() }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `${res.status}`);
+    const err = new Error(body.detail || `${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

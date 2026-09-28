@@ -59,6 +59,21 @@ export default function App() {
     setActiveSource(null);
   }, [activeCompany, activeYear]);
 
+  // Which company a visitor actually opens is the best proxy for what they
+  // came to analyse, so it is logged separately from the questions they ask.
+  useEffect(() => {
+    if (!auth || !activeCompany) return;
+    const company = companies.find((c) => c.company_normalized === activeCompany);
+    trackEvent("company_select", auth.role, {
+      company: company?.company || activeCompany,
+      year: activeYear ? String(activeYear) : "",
+      sector: company?.sector || "",
+    });
+    // companies is intentionally excluded: the selection is the trigger, and
+    // re-firing when the list loads would log the same choice twice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, activeCompany, activeYear]);
+
   // One visit per page load, so reloads and anonymous browsing are counted.
   // The session (if any) is already in sessionStorage at mount time.
   useEffect(() => {
@@ -71,6 +86,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    trackEvent("logout", auth?.role || "");
     sessionStorage.removeItem(SESSION_KEY);
     setAdminView(false);
     setAuth(null);

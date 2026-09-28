@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import json
 import secrets
@@ -20,7 +21,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from api.analytics import append_event, get_summary, get_visitors, is_private_ip
+from api.analytics import (append_event, get_deep, get_summary, get_visitors,
+                           is_private_ip)
 
 from build_index import (build_index, find_pdfs, iter_reports, load_registry,
                          load_scraper_meta)
@@ -114,6 +116,8 @@ async def _api_guard(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
     if request.url.path.startswith("/api"):
+        ua = request.headers.get("user-agent", "")
+        ip = _client_ip(request)
         if API_TOKEN:
             provided = request.headers.get("x-api-token", "")
             auth = request.headers.get("authorization", "")
@@ -122,20 +126,32 @@ async def _api_guard(request: Request, call_next):
             if not provided and request.method == "GET" and request.url.path.rstrip("/") == _PDF_PATH:
                 provided = request.query_params.get("token", "")
             if not secrets.compare_digest(provided, API_TOKEN):
+                # Someone guessing the API token — record it so a failed
+                # attempt shows up in the dashboard instead of vanishing.
+                await asyncio.to_thread(
+                    append_event, "error", ua, ip, "",
+                    {"kind": "unauthorized", "path": request.url.path},
+                )
                 return JSONResponse({"detail": "unauthorized"}, status_code=401)
         if request.url.path.rstrip("/") in _CHAT_PATHS:
-            ip = _client_ip(request) or "unknown"
+            rate_key = ip or "unknown"
             now = time.time()
             with _RATE_LOCK:
-                hits = _RATE_HITS.setdefault(ip, deque())
+                hits = _RATE_HITS.setdefault(rate_key, deque())
                 while hits and now - hits[0] > 60:
                     hits.popleft()
-                if len(hits) >= RATE_LIMIT_PER_MIN:
-                    return JSONResponse(
-                        {"detail": "trop de requetes, reessayez dans un instant"},
-                        status_code=429,
-                    )
-                hits.append(now)
+                limited = len(hits) >= RATE_LIMIT_PER_MIN
+                if not limited:
+                    hits.append(now)
+            if limited:
+                await asyncio.to_thread(
+                    append_event, "error", ua, ip, "",
+                    {"kind": "rate_limited", "path": request.url.path},
+                )
+                return JSONResponse(
+                    {"detail": "trop de requetes, reessayez dans un instant"},
+                    status_code=429,
+                )
     return await call_next(request)
 
 DIST = ROOT / "frontend" / "dist"
@@ -212,14 +228,19 @@ def _total_counts():
 
 
 class TrackRequest(BaseModel):
-    type: Literal["visit", "demo_login", "demo_message", "demo_exhausted"]
+    type: Literal[
+        "visit", "demo_login", "demo_message", "demo_exhausted",
+        "login_attempt", "chat_message", "pdf_open", "company_select",
+        "logout", "error",
+    ]
     role: Literal["", "demo", "admin"] = ""
+    meta: dict = {}
 
 
 @app.post("/api/track")
 async def track(req: TrackRequest, request: Request):
     ua = request.headers.get("user-agent", "")
-    append_event(req.type, ua=ua, ip=_client_ip(request), role=req.role)
+    append_event(req.type, ua=ua, ip=_client_ip(request), role=req.role, meta=req.meta)
     return {"ok": True}
 
 
@@ -233,6 +254,17 @@ def analytics_visitors(limit: int = Query(200, ge=1, le=1000)):
     return {"visitors": get_visitors(limit)}
 
 
+@app.get("/api/analytics/deep")
+def analytics_deep(visitors: int = Query(300, ge=1, le=1000)):
+    """Single call for the whole admin dashboard.
+
+    The dashboard needs ~9 different views; issuing one request keeps the
+    30s auto-refresh from opening a burst of connections, and guarantees every
+    card is rendered from a single consistent snapshot of the event log.
+    """
+    return get_deep(visitors)
+
+
 class ChatRequest(BaseModel):
     message: str
     history: list[dict] = []
@@ -240,6 +272,8 @@ class ChatRequest(BaseModel):
     company: str | None = None
     year: str | None = None
     sector: str | None = None
+    # client-declared role, purely for analytics attribution
+    role: Literal["", "demo", "admin"] = ""
 
 
 def _read_csv(name: str) -> list[dict]:
@@ -439,39 +473,100 @@ def companies():
     return result
 
 
+def _log_question(
+    request: "ChatRequest",
+    http_request: Request,
+    started: float,
+    sources: list | None,
+    answer_text: str = "",
+    error: str = "",
+) -> None:
+    """Record one question in the analytics log.
+
+    Done server-side on purpose: the client already reports demo messages for
+    its own counter, but this also captures admin traffic, questions sent
+    straight to the API, and answers that never made it back to the browser.
+    """
+    meta = {
+        "question": request.message,
+        "company": request.company or "",
+        "year": request.year or "",
+        "sector": request.sector or "",
+        "scope": request.rapport or "all",
+        "latency_ms": int((time.time() - started) * 1000),
+        "sources": len(sources) if sources is not None else 0,
+        "chars": len(answer_text),
+    }
+    if error:
+        meta["error"] = error
+    try:
+        append_event(
+            "chat_message",
+            ua=http_request.headers.get("user-agent", ""),
+            ip=_client_ip(http_request),
+            role=request.role,
+            meta=meta,
+        )
+    except Exception:
+        pass
+
+
 @app.post("/api/chat")
-def chat(request: ChatRequest):
+def chat(request: ChatRequest, http_request: Request):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message vide.")
-    reply, sources = answer(
-        request.message,
-        request.history,
-        rapport=request.rapport,
-        company=request.company,
-        year=request.year,
-        sector=request.sector,
-    )
-    return {"role": "assistant", "content": reply, "sources": sources}
-
-
-@app.post("/api/chat/stream")
-def chat_stream(request: ChatRequest):
-    if not request.message.strip():
-        raise HTTPException(status_code=400, detail="Message vide.")
-
-    def generate():
-        for token, sources in answer_stream_tokens(
+    started = time.time()
+    try:
+        reply, sources = answer(
             request.message,
             request.history,
             rapport=request.rapport,
             company=request.company,
             year=request.year,
             sector=request.sector,
-        ):
-            if sources is not None:
-                yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
-            else:
-                yield f"data: {json.dumps({'token': token})}\n\n"
+        )
+    except Exception as exc:
+        _log_question(request, http_request, started, None, error=f"{type(exc).__name__}: {exc}")
+        raise
+    _log_question(request, http_request, started, sources, reply)
+    return {"role": "assistant", "content": reply, "sources": sources}
+
+
+@app.post("/api/chat/stream")
+def chat_stream(request: ChatRequest, http_request: Request):
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message vide.")
+    started = time.time()
+
+    def generate():
+        # Accumulated here so the log records the answer that was actually
+        # streamed, not just the sources.
+        parts: list[str] = []
+        sources: list | None = None
+        error = ""
+        try:
+            for token, srcs in answer_stream_tokens(
+                request.message,
+                request.history,
+                rapport=request.rapport,
+                company=request.company,
+                year=request.year,
+                sector=request.sector,
+            ):
+                if srcs is not None:
+                    sources = srcs
+                    yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
+                else:
+                    if token:
+                        parts.append(token)
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            # A client that disconnects mid-stream still gets logged, which is
+            # exactly the case worth knowing about.
+            _log_question(request, http_request, started, sources, "".join(parts), error)
 
     return StreamingResponse(
         generate(),
