@@ -22,8 +22,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from api import auth
-from api.analytics import (append_event, get_deep, get_summary, get_visitors,
-                           is_private_ip)
+from api.analytics import (append_event, get_anon_convos, get_deep, get_summary,
+                           get_visitors, is_private_ip)
 
 from build_index import (build_index, find_pdfs, iter_reports, load_registry,
                          load_scraper_meta)
@@ -454,6 +454,12 @@ def admin_user_history(user_id: int, request: Request, limit: int = Query(100, g
 
 class AdminResetPasswordBody(BaseModel):
     password: Optional[str] = None
+
+
+@app.get("/api/admin/anon")
+def admin_anon(limit: int = Query(200, ge=1, le=1000)):
+    convos = get_anon_convos(limit)
+    return {"total": len(convos), "convos": convos}
 
 
 @app.post("/api/admin/users/{user_id}/reset-password")

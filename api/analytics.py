@@ -689,6 +689,65 @@ def get_recent_questions(limit: int = 60) -> list[dict]:
     return out
 
 
+def get_anon_convos(limit: int = 200, max_messages: int = 60) -> list[dict]:
+    """Conversations of anonymous visitors (no account, role "demo").
+
+    Registered users persist Q&A in Postgres (chat_history); anonymous visitors
+    only leave the event log, so "their history" is the questions they asked.
+    """
+    data = load_analytics()
+    convos: dict[str, dict] = {}
+    for ev in data.get("chat_messages", []):
+        if ev.get("role") == "admin":
+            continue
+        meta = _meta_of(ev)
+        key = meta.get("session") or ev.get("ip_hash") or ev.get("ts")
+        conv = convos.get(key)
+        if conv is None:
+            conv = convos[key] = {
+                "key": key,
+                "ip": ev.get("ip", ""),
+                "ip_hash": ev.get("ip_hash", ""),
+                "location": _format_location(ev),
+                "country_code": ev.get("country_code", ""),
+                "device": ev.get("device", ""),
+                "browser": ev.get("browser", ""),
+                "os": ev.get("os", ""),
+                "role": ev.get("role", ""),
+                "first_seen": ev.get("ts", ""),
+                "last_seen": ev.get("ts", ""),
+                "messages": [],
+            }
+        conv["messages"].append({
+            "timestamp": ev.get("ts", ""),
+            "question": meta.get("question", ""),
+            "answer": "",
+            "sources": [],
+            "latency_ms": meta.get("latency_ms"),
+            "company": meta.get("company", ""),
+            "year": meta.get("year", ""),
+            "sector": meta.get("sector", ""),
+        })
+        ts = ev.get("ts", "")
+        if ts < conv["first_seen"]:
+            conv["first_seen"] = ts
+        if ts > conv["last_seen"]:
+            conv["last_seen"] = ts
+            for field in ("ip", "country_code", "device", "browser", "os"):
+                if ev.get(field):
+                    conv[field] = ev[field]
+            if ev.get("ip_hash"):
+                conv["ip_hash"] = ev["ip_hash"]
+
+    rows = sorted(convos.values(), key=lambda c: c["last_seen"], reverse=True)
+    for conv in rows:
+        conv["questions"] = len(conv["messages"])
+        conv["messages"].sort(key=lambda m: m["timestamp"])
+        if len(conv["messages"]) > max_messages:
+            conv["messages"] = conv["messages"][-max_messages:]
+    return rows[:limit]
+
+
 def get_recent_logins(limit: int = 60) -> list[dict]:
     data = load_analytics()
     out: list[dict] = []

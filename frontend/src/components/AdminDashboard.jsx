@@ -3,6 +3,7 @@ import {
   fetchAnalyticsDeep,
   fetchAdminUsers,
   fetchAdminUserHistory,
+  fetchAdminAnon,
   fetchAdminResetPassword,
   trackError,
 } from "../api.js";
@@ -413,29 +414,37 @@ function Metric({ label, value }) {
 /* ── Comptes ───────────────────────────────────────────────────────────────── */
 
 function AccountsPage() {
-  const [state, setState]     = useState({ data: null, error: null });
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery]     = useState("");
-  const [modalUser, setModalUser] = useState(null);
-  const [history, setHistory] = useState(null);
+  const [tab, setTab]                 = useState("reg");
+  const [state, setState]             = useState({ data: null, error: null });
+  const [loading, setLoading]         = useState(true);
+  const [anonState, setAnonState]     = useState({ data: null, error: null });
+  const [anonLoading, setAnonLoading] = useState(true);
+  const [query, setQuery]             = useState("");
+  const [modal, setModal]             = useState(null);
+  const [history, setHistory]         = useState(null);
   const [histLoading, setHistLoading] = useState(false);
-  const [resetFor, setResetFor] = useState(null);
-  const [resetInput, setResetInput] = useState("");
+  const [resetFor, setResetFor]       = useState(null);
+  const [resetInput, setResetInput]   = useState("");
   const [resetResult, setResetResult] = useState(null);
-  const [resetError, setResetError] = useState(null);
-  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError]   = useState(null);
+  const [resetBusy, setResetBusy]     = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setAnonLoading(true);
     fetchAdminUsers()
-      .then((d) => { setState({ data: d, error: null }); })
+      .then((d) => setState({ data: d, error: null }))
       .catch((e) => { setState({ data: null, error: "Impossible de charger les comptes." }); trackError("admin_users_failed", e?.message || ""); })
       .finally(() => setLoading(false));
+    fetchAdminAnon()
+      .then((d) => setAnonState({ data: d, error: null }))
+      .catch(() => setAnonState({ data: null, error: "Impossible de charger les visiteurs anonymes." }))
+      .finally(() => setAnonLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const rows = useMemo(() => {
+  const regRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const users = state.data?.users || [];
     if (!q) return users;
@@ -444,14 +453,20 @@ function AccountsPage() {
     );
   }, [state.data, query]);
 
-  const openUser = (userId) => {
-    setModalUser(userId);
+  const openUser = (row) => {
+    setModal({ kind: "reg", row });
     setHistory(null);
     setHistLoading(true);
-    fetchAdminUserHistory(userId)
+    fetchAdminUserHistory(row.id)
       .then((h) => setHistory(h))
       .catch(() => setHistory({ messages: [], user: { full_name: "?", email: "erro" } }))
       .finally(() => setHistLoading(false));
+  };
+
+  const openAnon = (conv) => {
+    setModal({ kind: "anon", row: conv });
+    setHistory({ messages: conv.messages || [], user: null });
+    setHistLoading(false);
   };
 
   const openReset = (userId) => {
@@ -462,7 +477,7 @@ function AccountsPage() {
   };
 
   const closeModal = () => {
-    setModalUser(null);
+    setModal(null);
     setHistory(null);
     setResetFor(null);
     setResetInput("");
@@ -476,16 +491,12 @@ function AccountsPage() {
     setResetError(null);
     setResetResult(null);
     fetchAdminResetPassword(userId, resetInput.trim())
-      .then((r) => {
-        setResetResult(r);
-        setResetInput("");
-        load();
-      })
+      .then((r) => { setResetResult(r); setResetInput(""); })
       .catch((e) => setResetError(e?.message || "Réinitialisation impossible."))
       .finally(() => setResetBusy(false));
   };
 
-  if (loading) {
+  if (loading && anonLoading) {
     return (
       <div className="adash-card">
         <div className="adash-empty">Chargement des comptes…</div>
@@ -494,61 +505,71 @@ function AccountsPage() {
   }
 
   const u = state.data;
-  if (state.error || !u) return <ErrorState message={state.error} onRetry={load} />;
+  if (state.error && !u) return <ErrorState message={state.error} onRetry={load} />;
+  const a = anonState.data;
 
-  const withMessages = (u.users || []).filter((x) => x.messages_total > 0);
-  const msgsTotal = (u.users || []).reduce((s, x) => s + x.messages_total, 0);
-  const avgLeft = u.users?.length
-    ? Math.round((u.users.reduce((s, x) => s + x.quota_left_today, 0) / u.users.length) * 10) / 10
-    : 0;
+  const withMessages = (u?.users || []).filter((x) => x.messages_total > 0);
+  const msgsTotal = (u?.users || []).reduce((s, x) => s + x.messages_total, 0);
+  const convos = a?.convos || [];
+  const anonQuestions = convos.reduce((s, c) => s + (c.questions || c.messages?.length || 0), 0);
 
   return (
     <>
       <div className="adash-kpi-grid">
-        <KpiCard icon={<UserIcon />}  label="Comptes"          value={num(u.total)} sub="inscrits au total" color="teal" />
-        <KpiCard icon={<ChatIcon />}  label="Avec messages"    value={num(withMessages.length)} sub="ont utilisé le chat" color="amber" />
-        <KpiCard icon={<DocIcon />}   label="Messages sauvegardés" value={num(msgsTotal)} sub="stockés côté serveur" color="blue" />
-        <KpiCard icon={<CheckIcon />} label="Quota moyen restant" value={avgLeft} sub={`sur ${u.quota_day} messages / jour`} color="purple" />
+        <KpiCard icon={<UserIcon />}  label="Comptes enregistrés" value={num(u?.total ?? 0)} sub="inscrits au total" color="teal" />
+        <KpiCard icon={<ChatIcon />}  label="Avec messages" value={num(withMessages.length)} sub="réponses sauvegardées" color="amber" />
+        <KpiCard icon={<GlobeIcon />} label="Non enregistrés" value={num(convos.length)} sub="visiteurs anonymes" color="blue" />
+        <KpiCard icon={<DocIcon />}   label="Questions anonymes" value={num(anonQuestions)} sub="posées sans compte" color="purple" />
       </div>
 
-      <div className="adash-card">
-        <div className="adash-card-header">
-          <span className="adash-card-title">Comptes enregistrés</span>
-          <div className="adash-search">
-            <input
-              className="adash-search-input"
-              placeholder="Filtrer par nom ou email…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            {query && <button className="adash-search-clear" onClick={() => setQuery("")} title="Effacer">×</button>}
+      <div className="adash-tabs">
+        <button className={`adash-tab ${tab === "reg" ? "active" : ""}`} onClick={() => setTab("reg")}>
+          Comptes enregistrés ({u?.users?.length ?? 0})
+        </button>
+        <button className={`adash-tab ${tab === "anon" ? "active" : ""}`} onClick={() => setTab("anon")}>
+          Comptes non enregistrés ({convos.length})
+        </button>
+      </div>
+
+      {tab === "reg" && (
+        <div className="adash-card">
+          <div className="adash-card-header">
+            <span className="adash-card-title">Comptes enregistrés</span>
+            <div className="adash-search">
+              <input
+                className="adash-search-input"
+                placeholder="Filtrer par nom ou email…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              {query && <button className="adash-search-clear" onClick={() => setQuery("")} title="Effacer">×</button>}
+            </div>
           </div>
-        </div>
-        <div className="adash-card-sub adash-count-note">
-          {rows.length} sur {u.users?.length ?? 0} comptes
-        </div>
-        {rows.length === 0 ? (
-          <div className="adash-empty">Aucun compte enregistré pour le moment.</div>
-        ) : (
-          <div className="adash-table-wrap">
-            <table className="adash-table">
-              <thead>
-                <tr>
-                  <th>Compte</th>
-                  <th>Inscrit le</th>
-                  <th className="adash-num">Messages</th>
-                  <th>Quota aujourd'hui</th>
-                  <th>Dernier message</th>
-                  <th>Mot de passe</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((urow) => (
-                  <React.Fragment key={urow.id}>
+          <div className="adash-card-sub adash-count-note">
+            {regRows.length} sur {u?.users?.length ?? 0} comptes
+          </div>
+          {regRows.length === 0 ? (
+            <div className="adash-empty">Aucun compte enregistré pour le moment.</div>
+          ) : (
+            <div className="adash-table-wrap">
+              <table className="adash-table">
+                <thead>
+                  <tr>
+                    <th>Compte</th>
+                    <th>Inscrit le</th>
+                    <th className="adash-num">Messages</th>
+                    <th>Quota aujourd'hui</th>
+                    <th>Dernier message</th>
+                    <th>Mot de passe</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {regRows.map((urow) => (
                     <tr
+                      key={urow.id}
                       className="adash-clickable"
-                      onClick={() => openUser(urow.id)}
+                      onClick={() => openUser(urow)}
                       title="Voir les questions et réponses"
                     >
                       <td>
@@ -558,14 +579,14 @@ function AccountsPage() {
                       <td className="adash-cell-muted">{formatWhen(urow.created_at)}</td>
                       <td className="adash-num">{num(urow.messages_total)}</td>
                       <td>
-                        <QuotaBar used={urow.quota_used_today} total={u.quota_day} left={urow.quota_left_today} />
+                        <QuotaBar used={urow.quota_used_today} total={u?.quota_day} left={urow.quota_left_today} />
                       </td>
                       <td className="adash-cell-muted">{formatWhen(urow.last_message_at)}</td>
                       <td>
                         <button
                           className="adash-pwd-btn"
                           title="Réinitialiser le mot de passe"
-                          onClick={(e) => { e.stopPropagation(); openUser(urow.id); openReset(urow.id); }}
+                          onClick={(e) => { e.stopPropagation(); openUser(urow); openReset(urow.id); }}
                         >
                           Mot de passe
                         </button>
@@ -574,28 +595,80 @@ function AccountsPage() {
                         <span className="adash-expand-caret">▸</span>
                       </td>
                     </tr>
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
-      {modalUser != null && (
+      {tab === "anon" && (
+        <div className="adash-card">
+          <div className="adash-card-header">
+            <span className="adash-card-title">Comptes non enregistrés</span>
+          </div>
+          <div className="adash-card-sub adash-count-note">
+            {convos.length} visiteur(s) anonyme(s) · {anonQuestions} question(s)
+          </div>
+          {anonState.error && !a ? <div className="adash-empty">{anonState.error}</div> : null}
+          {convos.length === 0 ? (
+            <div className="adash-empty">Aucune conversation anonyme pour le moment.</div>
+          ) : (
+            <div className="adash-table-wrap">
+              <table className="adash-table">
+                <thead>
+                  <tr>
+                    <th>Visiteur</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th className="adash-num">Questions</th>
+                    <th>Dernier message</th>
+                    <th>Appareil</th>
+                    <th>Navigateur / OS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {convos.map((conv) => (
+                    <tr
+                      key={conv.key}
+                      className="adash-clickable"
+                      onClick={() => openAnon(conv)}
+                      title="Voir la conversation"
+                    >
+                      <td>
+                        <div className="adash-account-name">{conv.ip || "–"}</div>
+                        <div className="adash-account-email">{conv.location || ""}</div>
+                      </td>
+                      <td className="adash-cell-muted">—</td>
+                      <td className="adash-cell-muted">—</td>
+                      <td className="adash-num">{conv.questions ?? conv.messages?.length ?? 0}</td>
+                      <td className="adash-cell-muted">{formatWhen(conv.last_seen)}</td>
+                      <td className="adash-cell-muted">{conv.device || "–"}</td>
+                      <td className="adash-cell-muted">{[conv.browser, conv.os].filter(Boolean).join(" / ") || "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {modal != null && (
         <UserMessagesModal
-          userId={modalUser}
-          users={u.users || []}
+          row={modal.row}
+          isAnon={modal.kind === "anon"}
           history={history}
           loading={histLoading}
           onClose={closeModal}
-          resetVisible={resetFor === modalUser}
+          resetVisible={modal.kind === "reg" && resetFor === modal.row.id}
           resetInput={resetInput}
           resetResult={resetResult}
           resetError={resetError}
           resetBusy={resetBusy}
           onResetInput={setResetInput}
-          onResetSubmit={() => doReset(modalUser)}
+          onResetSubmit={() => doReset(modal.row.id)}
         />
       )}
     </>
@@ -621,12 +694,16 @@ function QuotaBar({ used, total, left }) {
 }
 
 function UserMessagesModal({
-  userId, users, history, loading, onClose,
+  row, isAnon, history, loading, onClose,
   resetVisible, resetInput, resetResult, resetError, resetBusy,
   onResetInput, onResetSubmit,
 }) {
-  const urow = users.find((x) => x.id === userId) || {};
   const meta = history?.user || {};
+  const fullName = meta.full_name || row?.full_name || (isAnon ? "—" : "Compte");
+  const email = meta.email || row?.email || "—";
+  const sub = isAnon
+    ? `— · ${row?.ip || ""}${row?.location ? " · " + row.location : ""}`
+    : `${email}${row?.created_at ? " · inscrit le " + formatWhen(row.created_at) : ""}`;
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -640,11 +717,8 @@ function UserMessagesModal({
         <div className="adash-umodal-head">
           <img className="adash-umodal-brand" src="/logo.png" alt="AE" />
           <div className="adash-umodal-meta">
-            <div className="adash-umodal-name">{meta.full_name || urow.full_name || "Compte"}</div>
-            <div className="adash-umodal-sub">
-              {meta.email || urow.email}
-              {(urow.created_at) && <span> · inscrit {formatWhen(urow.created_at)}</span>}
-            </div>
+            <div className="adash-umodal-name">{fullName}</div>
+            <div className="adash-umodal-sub">{sub}</div>
           </div>
           <button className="adash-umodal-close" onClick={onClose} title="Fermer">✕</button>
         </div>
@@ -652,7 +726,7 @@ function UserMessagesModal({
         {resetVisible && (
           <div className="adash-umodal-reset">
             <PasswordResetForm
-              user={{ full_name: meta.full_name || urow.full_name, email: meta.email || urow.email }}
+              user={{ full_name: fullName, email }}
               value={resetInput}
               onChange={onResetInput}
               result={resetResult}
@@ -670,7 +744,7 @@ function UserMessagesModal({
             <div className="adash-empty">Aucun message enregistré pour ce compte.</div>
           ) : (
             history.messages.map((m, i) => (
-              <UserMessage key={i} m={m} />
+              <UserMessage key={i} m={m} anon={isAnon} />
             ))
           )}
         </div>
@@ -679,7 +753,7 @@ function UserMessagesModal({
   );
 }
 
-function UserMessage({ m }) {
+function UserMessage({ m, anon }) {
   return (
     <div className="adash-conv">
       <div className="adash-conv-time">{formatWhen(m.timestamp)}</div>
@@ -690,17 +764,21 @@ function UserMessage({ m }) {
         <img className="adash-conv-avatar" src="/logo.png" alt="AE" />
         <div className="adash-conv-assistant">
           <div className="adash-conv-bubble assistant">
-            {m.answer || "—"}
+            {m.answer || (anon ? "Réponse non enregistrée (visiteur anonyme)" : "—")}
           </div>
-          {m.sources?.length > 0 && (
-            <div className="adash-conv-sources">
-              {m.sources.map((s, j) => (
-                <span key={j} className="adash-conv-source">
-                  {s.label || s.url || "source"}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="adash-conv-sources">
+            {typeof m.sources === "number" && m.sources > 0 && (
+              <span className="adash-conv-source">{m.sources} source(s)</span>
+            )}
+            {Array.isArray(m.sources) && m.sources.map((s, j) => (
+              <span key={j} className="adash-conv-source">
+                {s.label || s.url || "source"}
+              </span>
+            ))}
+            {anon && m.latency_ms != null && (
+              <span className="adash-conv-source">{m.latency_ms} ms</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

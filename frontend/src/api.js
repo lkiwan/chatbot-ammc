@@ -160,6 +160,7 @@ export const fetchHistory = (limit = 200) => request(`/history?limit=${limit}`, 
 export const deleteHistory = () => request("/history", { method: "DELETE", headers: bearerHeaders() });
 export const fetchAdminUsers = (limit = 500) => request(`/admin/users?limit=${limit}`);
 export const fetchAdminUserHistory = (userId, limit = 100) => request(`/admin/users/${userId}/history?limit=${limit}`);
+export const fetchAdminAnon = (limit = 200) => request(`/admin/anon?limit=${limit}`);
 export const fetchAdminResetPassword = (userId, password = "") =>
   request(`/admin/users/${userId}/reset-password`, {
     method: "POST",
