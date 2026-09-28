@@ -30,17 +30,29 @@ function loadSession() {
   } catch {}
 }
 
+function useIsMobile() {
+  const mq = window.matchMedia("(max-width: 860px)");
+  const [isMobile, setIsMobile] = useState(() => mq.matches);
+  useEffect(() => {
+    const on = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [mq]);
+  return isMobile;
+}
+
 export default function App() {
   const [auth, setAuth] = useState(loadSession);
   const [adminView, setAdminView] = useState(false);
+  const isMobile = useIsMobile();
 
   const [health, setHealth]       = useState(null);
   const [companies, setCompanies] = useState([]);
   const [stats, setStats]         = useState(null);
   const [activeCompany, setActiveCompany] = useState(null);
   const [activeYear, setActiveYear]       = useState(null);
-  const [sidebarOpen, setSidebarOpen]     = useState(true);
-  const [pdfOpen, setPdfOpen]             = useState(true);
+  const [sidebarOpen, setSidebarOpen]     = useState(() => !window.matchMedia("(max-width: 860px)").matches);
+  const [pdfOpen, setPdfOpen]             = useState(() => !window.matchMedia("(max-width: 860px)").matches);
   const [activeSource, setActiveSource]   = useState(null);
   const [sizes, setSizes]         = useState(loadSizes);
 
@@ -100,6 +112,29 @@ export default function App() {
   if (!auth) return <Login onLogin={handleLogin} />;
 
   const selectedCompany = companies.find((c) => c.company_normalized === activeCompany);
+
+  const sidebarContent = companies.length > 0 ? (
+    <Sidebar
+      companies={companies}
+      active={activeCompany}
+      activeYear={activeYear}
+      onSelect={(slug) => {
+        setActiveCompany(slug);
+        setActiveYear(null);
+      }}
+      onYearSelect={(y) => {
+        setActiveYear(y);
+        if (isMobile) setSidebarOpen(false);
+      }}
+    />
+  ) : (
+    <div className="sidebar-loading">
+      <div className="skeleton-line" />
+      <div className="skeleton-line short" />
+      <div className="skeleton-line" />
+      <div className="skeleton-line short" />
+    </div>
+  );
 
   return (
     <div className="app">
@@ -175,36 +210,47 @@ export default function App() {
       </header>
 
       <div className="layout">
-        {/* ── Sidebar ── */}
-        <div className={`sidebar-wrap ${sidebarOpen ? "open" : "closed"}`}
-          style={{ width: sidebarOpen ? sizes.sidebar : 0 }}
-        >
-          {companies.length > 0 && (
-            <Sidebar
-              companies={companies}
-              active={activeCompany}
-              activeYear={activeYear}
-              onSelect={(slug) => { setActiveCompany(slug); setActiveYear(null); }}
-              onYearSelect={setActiveYear}
-            />
-          )}
-          {companies.length === 0 && (
-            <div className="sidebar-loading">
-              <div className="skeleton-line" />
-              <div className="skeleton-line short" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line short" />
+        {!isMobile && (
+          <>
+            {/* ── Sidebar (desktop) ── */}
+            <div className={`sidebar-wrap ${sidebarOpen ? "open" : "closed"}`}
+              style={{ width: sidebarOpen ? sizes.sidebar : 0 }}
+            >
+              {sidebarContent}
             </div>
-          )}
-        </div>
 
-        {sidebarOpen && (
-          <Splitter
-            orientation="vertical"
-            onResize={(d) =>
-              setSizes((s) => ({ ...s, sidebar: clamp(s.sidebar + d, 200, 420) }))
-            }
-          />
+            {sidebarOpen && (
+              <Splitter
+                orientation="vertical"
+                onResize={(d) =>
+                  setSizes((s) => ({ ...s, sidebar: clamp(s.sidebar + d, 200, 420) }))
+                }
+              />
+            )}
+          </>
+        )}
+
+        {/* ── Mobile menu (drawer) ── */}
+        {isMobile && sidebarOpen && (
+          <div className="mobile-nav" role="dialog" aria-modal="true">
+            <div className="mobile-nav-scrim" onClick={() => setSidebarOpen(false)} />
+            <div className="mobile-nav-panel">
+              <div className="mobile-nav-head">
+                <img src="/logo.png" alt="AnnualEdge" className="mobile-nav-logo" />
+                <span className="mobile-nav-title">AnnualEdge</span>
+                <button
+                  className="mobile-nav-close"
+                  onClick={() => setSidebarOpen(false)}
+                  aria-label="Fermer le menu"
+                >
+                  <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                    <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+              {sidebarContent}
+            </div>
+          </div>
         )}
 
         {/* ── Chat + PDF viewer ── */}
@@ -217,6 +263,8 @@ export default function App() {
             sector={selectedCompany?.sector}
             onOpenSource={setActiveSource}
             isDemo={auth?.role === "demo"}
+            pdfOpen={pdfOpen}
+            onTogglePdf={() => setPdfOpen((v) => !v)}
           />
 
           {pdfOpen && (

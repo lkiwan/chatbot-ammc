@@ -1890,3 +1890,112 @@ input, textarea { font-family: var(--sans); }
 .adash-detail > div { display: flex; flex-direction: column; gap: 2px; }
 .adash-detail-lbl { font-size: 10.5px; color: var(--adash-muted); }
 .adash-detail-val { font-size: 12.5px; font-weight: 600; color: var(--adash-text); }
+
+/* ─── Phone / responsive layout ─────────────────────────────────── */
+@media (max-width: 860px) {
+  /* App shell follows mobile URL bar height */
+  .app { height: 100dvh; }
+
+  /* ── Topbar: essentials only ── */
+  .topbar { padding: 0 10px 0 8px; gap: 8px; z-index: 150; }
+  .topbar-menu { width: 38px; height: 38px; }
+  .brand-sep, .brand-sub { display: none; }
+  .brand-logo { height: 26px; }
+  .brand-name { font-size: 14.5px; }
+  .topbar-center { justify-content: flex-start; }
+  .topbar-context { max-width: 34vw; padding: 4px 9px; }
+  .topbar-company { max-width: 30vw; }
+  .topbar-stats { display: none; }
+  .status-badge { display: none; }
+  .topbar-user { padding-left: 8px; }
+  .topbar-user-role { display: none; }
+  .btn-dashboard { font-size: 0; padding: 8px; }
+  .btn-pdf-toggle { padding: 7px 10px; font-size: 12px; }
+  .btn-logout { width: 34px; height: 34px; }
+
+  /* ── Layout: single column, no splitters ── */
+  .layout { position: relative; }
+  .main { padding: 8px; gap: 8px; }
+
+  /* Mobile menu: dedicated drawer */
+  .mobile-nav { position: fixed; inset: 0; z-index: 180; }
+  .mobile-nav-scrim {
+    position: absolute; inset: 0;
+    background: rgba(5,10,20,.4);
+    animation: mobile-scrim-in .2s ease;
+  }
+  @keyframes mobile-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+  .mobile-nav-panel {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    width: min(85vw, 300px);
+    background: var(--sidebar-bg);
+    display: flex; flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,.06);
+    box-shadow: 8px 0 32px rgba(2,6,16,.5);
+    animation: mobile-nav-in .25s cubic-bezier(.22,1,.36,1);
+    max-height: 100dvh;
+  }
+  @keyframes mobile-nav-in { from { transform: translateX(-24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .mobile-nav-head {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--sidebar-line);
+    flex-shrink: 0;
+  }
+  .mobile-nav-logo { height: 26px; width: auto; object-fit: contain; }
+  .mobile-nav-title { font-size: 14.5px; font-weight: 700; color: var(--sidebar-text); flex: 1; }
+  .mobile-nav-close {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; border-radius: var(--radius);
+    color: var(--sidebar-muted); cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .mobile-nav-close:hover { background: var(--sidebar-2); color: var(--sidebar-text); }
+  .mobile-nav-panel .sidebar {
+    width: 100%; min-height: 0; flex: 1;
+  }
+
+  /* PDF viewer: full-screen overlay above everything */
+  .pdf-right-wrap {
+    position: fixed; inset: 0; z-index: 130;
+    width: 100vw !important;
+    background: var(--surface);
+  }
+  .pdf-right { border-radius: 0; border: none; }
+
+  /* ── Chat ── */
+  .chat { border-radius: var(--radius-lg); }
+  .chat-head { padding: 9px 12px; }
+  .chat-head-right .btn-pdf-toggle { padding: 6px 10px; font-size: 11.5px; }
+  .chat-context-scope { max-width: 42vw; }
+  .chat-body { padding: 16px 14px; gap: 16px; }
+  .chat-welcome-icon { width: 64px; height: 64px; }
+  .chat-welcome-icon img { width: 64px; height: 64px; }
+  .chat-welcome-title { font-size: 19px; }
+  .chat-welcome-sub { max-width: none; }
+  .chat-online { font-size: 0; }
+  .chat-online .online-dot { width: 8px; height: 8px; }
+  .chat-history-bar { max-height: none; }
+  .chat-history-item:hover .chat-history-delete,
+  .chat-history-delete { opacity: 1; }
+  .chat-composer { padding: 9px 10px 8px; }
+  .chat-composer textarea { font-size: 16px; }
+  .chat-hint { padding: 5px 12px 10px; }
+
+  /* ── Login ── */
+  .login-screen { padding: 14px; }
+  .login-screen::before { width: 380px; height: 380px; top: -140px; right: -120px; }
+  .login-screen::after  { width: 300px; height: 300px; bottom: -100px; left: -100px; }
+  .login-card { padding: 26px 20px 22px; border-radius: 18px; }
+  .login-logo { height: 64px; }
+
+  /* ── Admin dashboard ── */
+  .adash-header { padding: 0 12px; }
+  .adash-updated { display: none; }
+  .adash-body { padding: 14px 12px; }
+  .adash-tabs { overflow-x: auto; padding: 0 8px; }
+  .adash-tab { padding: 10px 12px; white-space: nowrap; }
+  .adash-card { padding: 14px 12px; }
+  .adash-charts-row { grid-template-columns: 1fr; }
+}

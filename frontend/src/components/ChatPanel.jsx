@@ -45,7 +45,7 @@ function loadHistory() {
   }
 }
 
-export default function ChatPanel({ company, companyName, year, sector, onOpenSource, isDemo }) {
+export default function ChatPanel({ company, companyName, year, sector, onOpenSource, isDemo, pdfOpen, onTogglePdf }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -221,6 +221,14 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
           </div>
         </div>
         <div className="chat-head-right">
+          <button
+            className={`btn-pdf-toggle ${pdfOpen ? "active" : ""}`}
+            onClick={() => onTogglePdf?.()}
+            aria-pressed={pdfOpen}
+            title="Afficher / masquer la visionneuse PDF"
+          >
+            PDF
+          </button>
           <span className="chat-online">
             <span className="online-dot" />
             En ligne
