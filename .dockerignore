@@ -13,6 +13,5 @@ ammc_report_scraper/data/manifests
 ammc_report_scraper/data/companies
 
 frontend/node_modules
-frontend/dist
 
 *.md

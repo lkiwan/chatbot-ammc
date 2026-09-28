@@ -124,11 +124,12 @@ async def _api_guard(request: Request, call_next):
         ip = _client_ip(request)
         if API_TOKEN:
             provided = request.headers.get("x-api-token", "")
-            auth = request.headers.get("authorization", "")
-            if auth[:7].lower() == "bearer ":
-                provided = auth[7:].strip()
-            if not provided and request.method == "GET" and request.url.path.rstrip("/") == _PDF_PATH:
-                provided = request.query_params.get("token", "")
+            if not provided:
+                auth = request.headers.get("authorization", "")
+                if auth[:7].lower() == "bearer ":
+                    provided = auth[7:].strip()
+                elif request.method == "GET" and request.url.path.rstrip("/") == _PDF_PATH:
+                    provided = request.query_params.get("token", "")
             if not secrets.compare_digest(provided, API_TOKEN):
                 # Someone guessing the API token — record it so a failed
                 # attempt shows up in the dashboard instead of vanishing.
@@ -337,6 +338,12 @@ def signup(req: SignupRequest, request: Request):
         with get_db() as db:
             user = auth.signup(db, req.full_name, req.email, req.password)
             left = auth.DAILY_QUOTA
+            result = {
+                "user": auth.public_user(user),
+                "token": user.token,
+                "quota_day": auth.DAILY_QUOTA,
+                "quota_left": left,
+            }
     except auth.AuthError as exc:
         tracking = {"email": req.email, "ok": False, "reason": exc.message[:200]}
         try:
@@ -350,12 +357,7 @@ def signup(req: SignupRequest, request: Request):
                      ip=_client_ip(request), role="user", meta={"email": user.email, "ok": True})
     except Exception:
         pass
-    return {
-        "user": auth.public_user(user),
-        "token": user.token,
-        "quota_day": auth.DAILY_QUOTA,
-        "quota_left": left,
-    }
+    return result
 
 
 @app.post("/api/auth/login")
@@ -366,7 +368,13 @@ def login(req: LoginRequest, request: Request):
         with get_db() as db:
             user = auth.login(db, req.email, req.password)
             left = auth.quota_left(db, user)
-    except AuthError as exc:
+            result = {
+                "user": auth.public_user(user),
+                "token": user.token,
+                "quota_day": auth.DAILY_QUOTA,
+                "quota_left": left,
+            }
+    except auth.AuthError as exc:
         try:
             append_event("login_attempt", ua=request.headers.get("user-agent", ""),
                          ip=_client_ip(request), role="user",
@@ -380,12 +388,7 @@ def login(req: LoginRequest, request: Request):
                      meta={"email": user.email, "ok": True})
     except Exception:
         pass
-    return {
-        "user": auth.public_user(user),
-        "token": user.token,
-        "quota_day": auth.DAILY_QUOTA,
-        "quota_left": left,
-    }
+    return result
 
 
 @app.get("/api/auth/me")
@@ -397,12 +400,13 @@ def auth_me(request: Request):
         if user is None:
             raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
         left = auth.quota_left(db, user)
-    return {
-        "user": auth.public_user(user),
-        "token": user.token,
-        "quota_day": auth.DAILY_QUOTA,
-        "quota_left": left,
-    }
+        result = {
+            "user": auth.public_user(user),
+            "token": user.token,
+            "quota_day": auth.DAILY_QUOTA,
+            "quota_left": left,
+        }
+    return result
 
 
 @app.get("/api/history")
