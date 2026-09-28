@@ -158,3 +158,5 @@ export const loginUser = (email, password) =>
 export const fetchMe = () => request("/auth/me", { headers: bearerHeaders() });
 export const fetchHistory = (limit = 200) => request(`/history?limit=${limit}`, { headers: bearerHeaders() });
 export const deleteHistory = () => request("/history", { method: "DELETE", headers: bearerHeaders() });
+export const fetchAdminUsers = (limit = 500) => request(`/admin/users?limit=${limit}`);
+export const fetchAdminUserHistory = (userId, limit = 100) => request(`/admin/users/${userId}/history?limit=${limit}`);

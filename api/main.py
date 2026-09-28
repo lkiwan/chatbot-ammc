@@ -422,15 +422,34 @@ def history(request: Request, limit: int = Query(200, ge=1, le=500)):
 
 
 @app.delete("/api/history")
-def clear_history(request: Request):
+def history_delete(request: Request):
     if not _DB_AVAILABLE:
         raise HTTPException(status_code=503, detail="Base de données indisponible.")
     with get_db() as db:
         user = auth.get_user_by_token(db, _bearer_token(request))
         if user is None:
             raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
-        db.query(ChatHistory).filter(ChatHistory.user_id == user.id).delete(synchronize_session=False)
+        db.query(ChatHistory).filter(ChatHistory.user_id == user.id).delete()
     return {"ok": True}
+
+
+@app.get("/api/admin/users")
+def admin_users(request: Request, limit: int = Query(500, ge=1, le=2000)):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    with get_db() as db:
+        return auth.admin_users(db, limit)
+
+
+@app.get("/api/admin/users/{user_id}/history")
+def admin_user_history(user_id: int, request: Request, limit: int = Query(100, ge=1, le=500)):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    with get_db() as db:
+        result = auth.admin_user_history(db, user_id, limit)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Compte introuvable.")
+    return result
 
 
 def _read_csv(name: str) -> list[dict]:

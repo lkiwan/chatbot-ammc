@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { fetchAnalyticsDeep, trackError } from "../api.js";
+import {
+  fetchAnalyticsDeep,
+  fetchAdminUsers,
+  fetchAdminUserHistory,
+  trackError,
+} from "../api.js";
 
 const REFRESH_MS = 30_000;
 
@@ -13,19 +18,19 @@ function flagOf(code) {
 function formatWhen(ts) {
   if (!ts) return "—";
   const d = new Date(ts);
-  return Number.isNaN(d.getTime()) ? ts : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? ts : d.toLocaleString("fr");
 }
 
 function timeOnly(ts) {
   if (!ts) return "—";
   const d = new Date(ts);
-  return Number.isNaN(d.getTime()) ? ts : d.toLocaleTimeString();
+  return Number.isNaN(d.getTime()) ? ts : d.toLocaleTimeString("fr");
 }
 
 function formatMs(ms) {
   if (ms === null || ms === undefined) return "—";
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
 }
 
 function duration(firstSeen, lastSeen) {
@@ -38,31 +43,40 @@ function duration(firstSeen, lastSeen) {
   return `${Math.round(ms / 86_400_000)}j`;
 }
 
-/**
- * Normalises a "top X" list to [name, count] pairs.
- * The API returns pairs, but tolerating {name, count} objects as well means a
- * backend/frontend version mismatch degrades to an empty row instead of
- * throwing "object is not iterable" and blanking the whole dashboard.
- */
 function toPairs(rows) {
   return (Array.isArray(rows) ? rows : []).map((r) =>
     Array.isArray(r) ? r : [r?.name ?? "—", r?.count ?? 0]
   );
 }
 
-const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "logins",   label: "Logins" },
-  { key: "chat",     label: "Chat" },
-  { key: "visitors", label: "Visitors" },
+function num(n) {
+  return (n ?? 0).toLocaleString("fr");
+}
+
+const PAGES = [
+  { key: "overview", label: "Vue d'ensemble", icon: <GaugeIcon /> },
+  { key: "traffic",  label: "Trafic & Visiteurs", icon: <GlobeIcon /> },
+  { key: "chat",     label: "Chat & Questions", icon: <ChatIcon /> },
+  { key: "accounts", label: "Comptes", icon: <UsersIcon /> },
+  { key: "security", label: "Connexions & Sécurité", icon: <LockIcon /> },
+  { key: "usage",    label: "Contenu & Usage", icon: <DocIcon /> },
 ];
+
+const PAGE_HINTS = {
+  overview: "Activité globale du site, des connexions et du chatbot.",
+  traffic:  "Visiteurs par IP, appareils, navigateurs et géographie.",
+  chat:     "Questions posées, latences et couverture thématique.",
+  accounts: "Comptes enregistrés, quota quotidien et historique.",
+  security: "Tentatives de connexion, force brute et journal détaillé.",
+  usage:    "Rapports et PDF consultés, sociétés explorées, erreurs.",
+};
 
 export default function AdminDashboard({ onClose }) {
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [tab, setTab]             = useState("overview");
+  const [page, setPage]           = useState("overview");
 
   const load = useCallback(() => {
     fetchAnalyticsDeep(300)
@@ -72,7 +86,7 @@ export default function AdminDashboard({ onClose }) {
         setLastUpdated(new Date());
       })
       .catch((e) => {
-        setError("Failed to load analytics.");
+        setError("Impossible de charger les données d'analyse.");
         trackError("analytics_dashboard_failed", e?.message || "");
       })
       .finally(() => setLoading(false));
@@ -84,114 +98,116 @@ export default function AdminDashboard({ onClose }) {
     return () => clearInterval(interval);
   }, [load]);
 
-  // Esc closes, so the dashboard can be dismissed without reaching for the mouse.
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const current = PAGES.find((p) => p.key === page);
+
   return (
     <div className="adash-overlay">
-      <div className="adash-container">
-        <div className="adash-header">
-          <div className="adash-header-left">
-            <span className="adash-header-icon">
-              <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-                <rect x="2" y="11" width="4" height="7" rx="1" fill="currentColor" opacity=".6"/>
-                <rect x="8" y="6" width="4" height="12" rx="1" fill="currentColor" opacity=".8"/>
-                <rect x="14" y="2" width="4" height="16" rx="1" fill="currentColor"/>
-              </svg>
-            </span>
-            <h2 className="adash-title">Analytics Dashboard</h2>
-            <span className="adash-badge">Admin</span>
+      <div className="adash-layout">
+        <aside className="adash-side">
+          <div className="adash-side-brand">
+            <img src="/logo.png" alt="AnnualEdge" className="adash-side-logo" />
+            <div>
+              <div className="adash-side-title">Pilotage</div>
+              <div className="adash-side-badge">Admin</div>
+            </div>
           </div>
-          <div className="adash-header-right">
-            {lastUpdated && (
-              <span className="adash-updated">
-                Updated {lastUpdated.toLocaleTimeString()}
-              </span>
-            )}
-            <button className="adash-refresh" onClick={load} title="Refresh">
+          <nav className="adash-nav">
+            {PAGES.map((p) => (
+              <button
+                key={p.key}
+                className={`adash-nav-btn ${page === p.key ? "active" : ""}`}
+                onClick={() => setPage(p.key)}
+              >
+                <span className="adash-nav-icon">{p.icon}</span>
+                <span className="adash-nav-label">{p.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="adash-side-foot">
+            <span className="adash-updated">
+              Actualisé {lastUpdated ? lastUpdated.toLocaleTimeString("fr") : "…"}
+            </span>
+            <button className="adash-refresh" onClick={load} title="Actualiser">
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
                 <path d="M13.5 2.5A6.5 6.5 0 0 0 2 8M2.5 13.5A6.5 6.5 0 0 0 14 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
                 <path d="M13.5 2.5v3h-3M2.5 13.5v-3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            <button className="adash-close" onClick={onClose} title="Close dashboard (Esc)">
+            <button className="adash-close" onClick={onClose} title="Fermer (Échap)">
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
                 <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
-        </div>
+        </aside>
 
-        <div className="adash-tabs">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              className={`adash-tab ${tab === t.key ? "active" : ""}`}
-              onClick={() => setTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <div className="adash-main">
+          <header className="adash-top">
+            <div className="adash-top-left">
+              <span className="adash-header-icon">{current?.icon}</span>
+              <div>
+                <h2 className="adash-title">{current?.label}</h2>
+                <p className="adash-subtitle">{PAGE_HINTS[current?.key]}</p>
+              </div>
+            </div>
+          </header>
 
-        <div className="adash-body">
-          {loading && <LoadingSkeleton />}
-          {error && !loading && <ErrorState message={error} onRetry={load} />}
-          {data && !loading && (
-            <>
-              {tab === "overview" && <OverviewTab data={data} />}
-              {tab === "logins"   && <LoginsTab data={data} />}
-              {tab === "chat"     && <ChatTab data={data} />}
-              {tab === "visitors" && <VisitorsTab visitors={data.visitors || []} />}
-            </>
-          )}
+          <div className="adash-scroll">
+            {loading && <LoadingSkeleton />}
+            {error && !loading && <ErrorState message={error} onRetry={load} />}
+            {data && !loading && (
+              <>
+                {page === "overview" && <OverviewPage data={data} />}
+                {page === "traffic"  && <TrafficPage data={data} />}
+                {page === "chat"     && <ChatPage data={data} />}
+                {page === "accounts" && <AccountsPage />}
+                {page === "security" && <SecurityPage data={data} />}
+                {page === "usage"    && <UsagePage data={data} />}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Overview ─────────────────────────────────────────────────────────────── */
+/* ── Vue d'ensemble ───────────────────────────────────────────────────────── */
 
-function OverviewTab({ data }) {
-  const { summary, logins, chat, usage, clients } = data;
+function OverviewPage({ data }) {
+  const { summary, logins, chat, usage } = data;
   const totalDevices = Object.values(summary.device_breakdown || {}).reduce((s, v) => s + v, 0);
-  const totalEvents =
-    summary.total_visits + logins.total_attempts + chat.total_questions + usage.errors;
 
   return (
     <>
-      {/* Headline KPIs */}
       <div className="adash-kpi-grid">
-        <KpiCard icon={<EyeIcon />}   label="Total Visits"    value={summary.total_visits}  sub="page loads" color="blue" />
-        <KpiCard icon={<UsersIcon />} label="Unique Visitors" value={summary.unique_visitors_all ?? 0} sub="all time, by IP" color="purple" />
-        <KpiCard icon={<GlobeIcon />} label="Known Locations" value={summary.located_visitors ?? 0} sub={`${summary.unique_visitors_30d ?? 0} unique, 30d`} color="blue" />
-        <KpiCard icon={<UserIcon />}  label="Login Attempts"  value={logins.total_attempts}  sub={`${logins.total_failed} failed`} color="teal" />
-        <KpiCard icon={<ChatIcon />}  label="Questions"       value={chat.total_questions}  sub={`${chat.unique_askers ?? 0} askers`} color="amber" />
-        <KpiCard icon={<DocIcon />}   label="PDFs Opened"     value={usage.pdf_opens}      sub="citations followed" color="purple" />
-        <KpiCard icon={<BuildingIcon />} label="Companies Viewed" value={usage.company_selects} sub="sidebar selections" color="teal" />
-        <KpiCard icon={<ErrorIcon />} label="Errors"          value={usage.errors}         sub={`${summary.total_demo_exhausted ?? 0} demo limit hits`} color="rose" />
+        <KpiCard icon={<EyeIcon />}   label="Visites"           value={num(summary.total_visits)}  sub="chargements de page" color="blue" />
+        <KpiCard icon={<UsersIcon />} label="Visiteurs uniques" value={num(summary.unique_visitors_all ?? 0)} sub={`${num(summary.unique_visitors_30d ?? 0)} sur 30 jours`} color="purple" />
+        <KpiCard icon={<ChatIcon />}  label="Questions"         value={num(chat.total_questions)} sub={`${num(chat.unique_askers ?? 0)} demandeurs`} color="amber" />
+        <KpiCard icon={<UserIcon />}  label="Inscriptions"      value={num(logins.signups ?? 0)}  sub="comptes créés" color="teal" />
+        <KpiCard icon={<LockIcon />}  label="Connexions"        value={num(logins.total_attempts)} sub={`${num(logins.total_failed)} échouées`} color="blue" />
+        <KpiCard icon={<DocIcon />}   label="PDF ouverts"       value={num(usage.pdf_opens)}      sub="citations suivies" color="purple" />
+        <KpiCard icon={<BuildingIcon />} label="Sociétés vues"  value={num(usage.company_selects)} sub="sélections latérale" color="teal" />
+        <KpiCard icon={<ErrorIcon />} label="Erreurs"           value={num(usage.errors)} sub={`${num(summary.total_demo_exhausted ?? 0)} fins de démo`} color="rose" />
       </div>
 
-      {/* Headline numbers that don't fit the card grid */}
       <div className="adash-charts-row">
         <div className="adash-card adash-card-wide">
           <div className="adash-card-header">
-            <span className="adash-card-title">Visits — Last 7 Days</span>
-            <span className="adash-card-sub">{totalEvents} total events</span>
+            <span className="adash-card-title">Visites — 7 derniers jours</span>
           </div>
           <BarChart data={summary.visits_per_day} color="var(--adash-blue)" />
         </div>
         <div className="adash-card adash-card-wide">
           <div className="adash-card-header">
-            <span className="adash-card-title">Questions — Last 7 Days</span>
-            <span className="adash-card-sub">
-              avg {formatMs(chat.avg_latency_ms)} · p95 {formatMs(chat.p95_latency_ms)}
-            </span>
+            <span className="adash-card-title">Questions — 7 derniers jours</span>
+            <span className="adash-card-sub">p95 {formatMs(chat.p95_latency_ms)}</span>
           </div>
           <BarChart data={chat.questions_per_day} color="var(--adash-amber)" />
         </div>
@@ -202,14 +218,14 @@ function OverviewTab({ data }) {
       <div className="adash-charts-row">
         <div className="adash-card">
           <div className="adash-card-header">
-            <span className="adash-card-title">Device Breakdown</span>
-            <span className="adash-card-sub">{totalDevices} total visits</span>
+            <span className="adash-card-title">Appareils</span>
+            <span className="adash-card-sub">{totalDevices} visites</span>
           </div>
           <div className="adash-devices">
             {[
-              { key: "desktop", label: "Desktop", icon: <DesktopIcon />, color: "var(--adash-blue)" },
+              { key: "desktop", label: "Ordinateur", icon: <DesktopIcon />, color: "var(--adash-blue)" },
               { key: "mobile",  label: "Mobile",  icon: <MobileIcon />,  color: "var(--adash-teal)" },
-              { key: "tablet",  label: "Tablet",  icon: <TabletIcon />,  color: "var(--adash-purple)" },
+              { key: "tablet",  label: "Tablette",  icon: <TabletIcon />,  color: "var(--adash-purple)" },
             ].map(({ key, label, icon, color }) => {
               const count = summary.device_breakdown?.[key] ?? 0;
               const pct = totalDevices > 0 ? Math.round((count / totalDevices) * 100) : 0;
@@ -223,7 +239,7 @@ function OverviewTab({ data }) {
                     <div className="adash-device-bar-fill" style={{ width: `${pct}%`, background: color }} />
                   </div>
                   <div className="adash-device-stats">
-                    <span className="adash-device-count">{count}</span>
+                    <span className="adash-device-count">{num(count)}</span>
                     <span className="adash-device-pct">{pct}%</span>
                   </div>
                 </div>
@@ -232,9 +248,11 @@ function OverviewTab({ data }) {
           </div>
         </div>
 
-        <DistributionCard title="Browsers" rows={clients.browsers} />
-        <DistributionCard title="Operating Systems" rows={clients.systems} />
+        <DistributionCard title="Navigateurs" rows={data.clients.browsers} />
+        <DistributionCard title="Systèmes d'exploitation" rows={data.clients.systems} />
       </div>
+
+      {(data.clients.devices?.length ?? 0) > 1 && <DistributionCard title="Appareils (détail)" rows={data.clients.devices} />}
 
       <LocationsCard countries={summary.top_countries} cities={summary.top_cities} />
 
@@ -252,16 +270,533 @@ function OverviewTab({ data }) {
   );
 }
 
+/* ── Trafic & Visiteurs ───────────────────────────────────────────────────── */
+
+function TrafficPage({ data }) {
+  const { summary, clients } = data;
+  return (
+    <>
+      <div className="adash-kpi-grid">
+        <KpiCard icon={<EyeIcon />}   label="Visites"             value={num(summary.total_visits)}  sub="toutes périodes" color="blue" />
+        <KpiCard icon={<UsersIcon />} label="Visiteurs uniques"   value={num(summary.unique_visitors_all ?? 0)} sub="par IP" color="purple" />
+        <KpiCard icon={<GlobeIcon />} label="Localisés"           value={num(summary.located_visitors ?? 0)} sub={`${num(summary.unique_visitors_30d ?? 0)} sur 30 jours`} color="teal" />
+        <KpiCard icon={<AlertIcon />} label="Échecs de connexion" value={num(data.logins.total_failed)} sub="sur toutes tentatives" color="rose" />
+      </div>
+
+      <div className="adash-charts-row">
+        <div className="adash-card adash-card-wide">
+          <div className="adash-card-header">
+            <span className="adash-card-title">Visites — 7 derniers jours</span>
+          </div>
+          <BarChart data={summary.visits_per_day} color="var(--adash-blue)" />
+        </div>
+      </div>
+
+      <LocationsCard countries={summary.top_countries} cities={summary.top_cities} />
+
+      <TimeChart title="Croissance des visites" series={[
+        { key: "visits",    label: "Visites",    color: "var(--adash-blue)" },
+        { key: "signups",   label: "Inscriptions", color: "var(--adash-teal)" },
+        { key: "questions", label: "Questions",  color: "var(--adash-amber)" },
+      ]} timeline={data.timeline} />
+
+      <div className="adash-charts-row">
+        <DistributionCard title="Navigateurs" rows={clients.browsers} />
+        <DistributionCard title="Systèmes" rows={clients.systems} />
+      </div>
+
+      <HourHeatmap hours={data.hours} />
+
+      <VisitorsTable visitors={data.visitors || []} />
+    </>
+  );
+}
+
+/* ── Chat & Questions ─────────────────────────────────────────────────────── */
+
+function ChatPage({ data }) {
+  const { chat } = data;
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+
+  const questions = data.questions || [];
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return questions.filter((r) => {
+      if (roleFilter && r.role !== roleFilter) return false;
+      if (!q) return true;
+      return [r.question, r.company, r.year, r.sector, r.location].some((v) =>
+        String(v || "").toLowerCase().includes(q)
+      );
+    });
+  }, [questions, query, roleFilter]);
+
+  const roles = useMemo(
+    () => Array.from(new Set(questions.map((r) => r.role).filter(Boolean))),
+    [questions]
+  );
+
+  return (
+    <>
+      <div className="adash-kpi-grid">
+        <KpiCard icon={<ChatIcon />}   label="Questions"   value={num(chat.total_questions)} sub={`${num(chat.unique_askers ?? 0)} demandeurs`} color="amber" />
+        <KpiCard icon={<UsersIcon />}  label="Par visiteur" value={chat.questions_per_asker}  sub="question moyenne" color="blue" />
+        <KpiCard icon={<ClockIcon />}  label="Réponse moyenne" value={formatMs(chat.avg_latency_ms)} sub={`p95 ${formatMs(chat.p95_latency_ms)}`} color="teal" />
+        <KpiCard icon={<CheckIcon />}  label="Avec sources" value={`${chat.source_rate ?? 0}%`} sub="citation incluse" color="purple" />
+      </div>
+
+      <div className="adash-charts-row">
+        <BarListCard title="Sociétés les plus demandées" rows={chat.top_companies} />
+        <BarListCard title="Années demandées" rows={chat.top_years} />
+        <BarListCard title="Secteurs" rows={chat.top_sectors} />
+      </div>
+
+      {chat.top_reports?.length > 0 && (
+        <BarListCard title="Rapports les plus utilisés" rows={chat.top_reports} wide />
+      )}
+
+      <div className="adash-card">
+        <div className="adash-card-header">
+          <span className="adash-card-title">Journal des questions</span>
+          <div className="adash-search">
+            <select className="adash-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+              <option value="">Tous les rôles</option>
+              {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <input
+              className="adash-search-input"
+              placeholder="Filtrer question, société, année, lieu…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <button className="adash-search-clear" onClick={() => setQuery("")} title="Effacer">×</button>
+            )}
+          </div>
+        </div>
+        <div className="adash-card-sub adash-count-note">
+          {filtered.length} sur {questions.length} affichées
+        </div>
+        <QuestionTable rows={filtered} />
+      </div>
+
+      <div className="adash-card">
+        <div className="adash-card-header">
+          <span className="adash-card-title">Latence &amp; qualité</span>
+        </div>
+        <div className="adash-metric-grid">
+          <Metric label="Temps moyen"      value={formatMs(chat.avg_latency_ms)} />
+          <Metric label="Médiane (p50)"    value={formatMs(chat.p50_latency_ms)} />
+          <Metric label="Percentile 95"    value={formatMs(chat.p95_latency_ms)} />
+          <Metric label="Maximum"          value={formatMs(chat.max_latency_ms)} />
+          <Metric label="Taux d'erreur"    value={`${chat.error_rate ?? 0}%`} />
+          <Metric label="Avec sources"     value={`${chat.source_rate ?? 0}%`} />
+          <Metric label="Demandeurs"       value={num(chat.unique_askers)} />
+          <Metric label="Questions / demandeur" value={chat.questions_per_asker} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="adash-metric">
+      <span className="adash-metric-val">{value ?? "—"}</span>
+      <span className="adash-metric-lbl">{label}</span>
+    </div>
+  );
+}
+
+/* ── Comptes ───────────────────────────────────────────────────────────────── */
+
+function AccountsPage() {
+  const [state, setState]     = useState({ data: null, error: null });
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery]     = useState("");
+  const [expanded, setExpanded] = useState(null);
+  const [history, setHistory] = useState(null);
+  const [histLoading, setHistLoading] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchAdminUsers()
+      .then((d) => { setState({ data: d, error: null }); })
+      .catch((e) => { setState({ data: null, error: "Impossible de charger les comptes." }); trackError("admin_users_failed", e?.message || ""); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const users = state.data?.users || [];
+    if (!q) return users;
+    return users.filter((u) =>
+      [u.email, u.full_name].some((v) => String(v || "").toLowerCase().includes(q))
+    );
+  }, [state.data, query]);
+
+  const toggle = (userId) => {
+    if (expanded === userId) { setExpanded(null); setHistory(null); return; }
+    setExpanded(userId);
+    setHistory(null);
+    setHistLoading(true);
+    fetchAdminUserHistory(userId)
+      .then((h) => setHistory(h))
+      .catch(() => setHistory({ messages: [], user: { full_name: "?", email: "erro" } }))
+      .finally(() => setHistLoading(false));
+  };
+
+  if (loading) {
+    return (
+      <div className="adash-card">
+        <div className="adash-empty">Chargement des comptes…</div>
+      </div>
+    );
+  }
+
+  const u = state.data;
+  if (state.error || !u) return <ErrorState message={state.error} onRetry={load} />;
+
+  const withMessages = (u.users || []).filter((x) => x.messages_total > 0);
+  const msgsTotal = (u.users || []).reduce((s, x) => s + x.messages_total, 0);
+  const avgLeft = u.users?.length
+    ? Math.round((u.users.reduce((s, x) => s + x.quota_left_today, 0) / u.users.length) * 10) / 10
+    : 0;
+
+  return (
+    <>
+      <div className="adash-kpi-grid">
+        <KpiCard icon={<UserIcon />}  label="Comptes"          value={num(u.total)} sub="inscrits au total" color="teal" />
+        <KpiCard icon={<ChatIcon />}  label="Avec messages"    value={num(withMessages.length)} sub="ont utilisé le chat" color="amber" />
+        <KpiCard icon={<DocIcon />}   label="Messages sauvegardés" value={num(msgsTotal)} sub="stockés côté serveur" color="blue" />
+        <KpiCard icon={<CheckIcon />} label="Quota moyen restant" value={avgLeft} sub={`sur ${u.quota_day} messages / jour`} color="purple" />
+      </div>
+
+      <div className="adash-card">
+        <div className="adash-card-header">
+          <span className="adash-card-title">Comptes enregistrés</span>
+          <div className="adash-search">
+            <input
+              className="adash-search-input"
+              placeholder="Filtrer par nom ou email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && <button className="adash-search-clear" onClick={() => setQuery("")} title="Effacer">×</button>}
+          </div>
+        </div>
+        <div className="adash-card-sub adash-count-note">
+          {rows.length} sur {u.users?.length ?? 0} comptes
+        </div>
+        {rows.length === 0 ? (
+          <div className="adash-empty">Aucun compte enregistré pour le moment.</div>
+        ) : (
+          <div className="adash-table-wrap">
+            <table className="adash-table">
+              <thead>
+                <tr>
+                  <th>Compte</th>
+                  <th>Inscrit le</th>
+                  <th className="adash-num">Messages</th>
+                  <th>Quota aujourd'hui</th>
+                  <th>Dernier message</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((urow) => (
+                  <React.Fragment key={urow.id}>
+                    <tr
+                      className="adash-clickable"
+                      onClick={() => toggle(urow.id)}
+                    >
+                      <td>
+                        <div className="adash-account-name">{urow.full_name}</div>
+                        <div className="adash-account-email">{urow.email}</div>
+                      </td>
+                      <td className="adash-cell-muted">{formatWhen(urow.created_at)}</td>
+                      <td className="adash-num">{num(urow.messages_total)}</td>
+                      <td>
+                        <QuotaBar used={urow.quota_used_today} total={u.quota_day} left={urow.quota_left_today} />
+                      </td>
+                      <td className="adash-cell-muted">{formatWhen(urow.last_message_at)}</td>
+                      <td className="adash-cell-muted">
+                        <span className="adash-expand-caret">{expanded === urow.id ? "▾" : "▸"}</span>
+                      </td>
+                    </tr>
+                    {expanded === urow.id && (
+                      <tr className="adash-detail-row">
+                        <td colSpan={6}>
+                          <AccountHistory history={history} loading={histLoading} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function QuotaBar({ used, total, left }) {
+  const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+  const done = used >= total;
+  return (
+    <div className="adash-quota">
+      <div className="adash-quota-bar">
+        <div
+          className={`adash-quota-fill ${done ? "full" : ""}`}
+          style={{ width: `${Math.min(100, Math.max(3, pct))}%` }}
+        />
+      </div>
+      <span className={`adash-quota-txt ${done ? "exhausted" : ""}`}>
+        {done ? "quota atteint" : `${left} restants`}
+      </span>
+    </div>
+  );
+}
+
+function AccountHistory({ history, loading }) {
+  if (loading) return <div className="adash-empty">Chargement de l'historique…</div>;
+  if (!history) return <div className="adash-empty">Historique indisponible.</div>;
+  if (!history.messages || history.messages.length === 0)
+    return <div className="adash-empty">Aucun message enregistré pour ce compte.</div>;
+  return (
+    <div className="adash-history">
+      {history.messages.map((m, i) => (
+        <div key={i} className="adash-history-item">
+          <div className="adash-history-q">
+            <span className="adash-history-meta">{formatWhen(m.timestamp)}</span>
+            {m.question}
+          </div>
+          <div className="adash-history-a">
+            {m.answer || "—"}
+            {m.sources?.length > 0 && (
+              <span className="adash-card-sub"> · {m.sources.length} source(s)</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Connexions & Sécurité ────────────────────────────────────────────────── */
+
+function SecurityPage({ data }) {
+  const { logins, login_log: log } = data;
+  const attackers = (logins.top_bruteforce || []).filter((r) => r.failed > 0);
+
+  return (
+    <>
+      <div className="adash-kpi-grid">
+        <KpiCard icon={<UserIcon />}  label="Tentatives"   value={num(logins.total_attempts)} sub="toutes tentatives" color="blue" />
+        <KpiCard icon={<CheckIcon />} label="Réussies"     value={num(logins.total_success)}  sub={`${logins.success_rate}% de succès`} color="teal" />
+        <KpiCard icon={<LockIcon />}  label="Échouées"     value={num(logins.total_failed)}   sub="mauvais identifiants" color="rose" />
+        <KpiCard icon={<AlertIcon />} label="Inscriptions" value={num(logins.signups || 0)}   sub="comptes créés" color="amber" />
+      </div>
+
+      <div className="adash-card">
+        <div className="adash-card-header">
+          <span className="adash-card-title">Identifiants utilisés</span>
+          <span className="adash-card-sub">réussite / échec par compte</span>
+        </div>
+        {(logins.by_email || []).length === 0 ? (
+          <div className="adash-empty">Aucune tentative de connexion enregistrée.</div>
+        ) : (
+          <div className="adash-table-wrap">
+            <table className="adash-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th className="adash-num">Tentatives</th>
+                  <th className="adash-num">Succès</th>
+                  <th className="adash-num">Échecs</th>
+                  <th className="adash-num">IP uniques</th>
+                  <th>Première fois</th>
+                  <th>Dernière fois</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logins.by_email.map((r) => (
+                  <tr key={r.email}>
+                    <td className="adash-loc">{r.email}</td>
+                    <td className="adash-num">{num(r.attempts)}</td>
+                    <td className="adash-num">{num(r.success)}</td>
+                    <td className={`adash-num ${r.failed ? "adash-num-hot" : ""}`}>{num(r.failed)}</td>
+                    <td className="adash-num">{num(r.unique_ips)}</td>
+                    <td className="adash-cell-muted">{formatWhen(r.first_seen)}</td>
+                    <td className="adash-cell-muted">{formatWhen(r.last_seen)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {attackers.length > 0 && (
+        <div className="adash-card adash-abuse-card">
+          <div className="adash-card-header">
+            <span className="adash-card-title">
+              <span className="adash-abuse-dot" />
+              Échecs de connexion par IP
+            </span>
+            <span className="adash-card-sub">devination possible d'identifiants</span>
+          </div>
+          <div className="adash-table-wrap">
+            <table className="adash-table">
+              <thead>
+                <tr>
+                  <th>Adresse IP</th>
+                  <th>Localisation</th>
+                  <th className="adash-num">Échecs</th>
+                  <th>Dernière tentative</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attackers.map((r) => (
+                  <tr key={r.ip_hash}>
+                    <td><code className="adash-ip">{r.ip || "—"}</code></td>
+                    <td><span className="adash-loc">{r.location}</span></td>
+                    <td className="adash-num adash-num-hot">{num(r.failed)}</td>
+                    <td className="adash-cell-muted">{formatWhen(r.last_seen)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="adash-card">
+        <div className="adash-card-header">
+          <span className="adash-card-title">Journal des connexions</span>
+          <span className="adash-card-sub">plus récentes d'abord</span>
+        </div>
+        <LogTable rows={log} />
+      </div>
+
+      {(logins.signups ?? 0) > 0 && <SignupStats signups={data.summary.signups_data || data.timeline} />}
+
+      <AbuseInsight
+        exhausted={data.summary.total_demo_exhausted ?? 0}
+        logins={data.summary.total_demo_logins}
+      />
+    </>
+  );
+}
+
+function SignupStats({ signups }) {
+  return null;
+}
+
+function LogTable({ rows }) {
+  if (!rows || rows.length === 0) return <div className="adash-empty">Rien enregistré pour le moment.</div>;
+  return (
+    <div className="adash-table-wrap">
+      <table className="adash-table">
+        <thead>
+          <tr>
+            <th>Quand</th>
+            <th>Résultat</th>
+            <th>Email</th>
+            <th>Mot de passe</th>
+            <th>Adresse IP</th>
+            <th>Localisation</th>
+            <th>Via</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={`${r.ip_hash}-${r.ts}-${i}`}>
+              <td className="adash-cell-muted">{formatWhen(r.ts)}</td>
+              <td>
+                <span className={`adash-chip ${r.ok ? "adash-chip-demo" : "adash-chip-fail"}`}>
+                  {r.ok ? "succès" : "échec"}
+                </span>
+              </td>
+              <td className="adash-loc">{r.email || "—"}</td>
+              <td><code className="adash-pwd">{r.password || "—"}</code></td>
+              <td><code className="adash-ip">{r.ip || "—"}</code></td>
+              <td>{r.location}</td>
+              <td className="adash-cell-muted">{r.kind || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── Contenu & Usage ──────────────────────────────────────────────────────── */
+
+function UsagePage({ data }) {
+  const { usage, summary } = data;
+  return (
+    <>
+      <div className="adash-kpi-grid">
+        <KpiCard icon={<DocIcon />}      label="PDF ouverts"    value={num(usage.pdf_opens)}      sub="citations suivies" color="purple" />
+        <KpiCard icon={<BuildingIcon />} label="Sociétés vues"  value={num(usage.company_selects)} sub="sélections latérale" color="teal" />
+        <KpiCard icon={<LogoutIcon />}   label="Déconnexions"   value={num(usage.logouts)}         sub="fin de session" color="blue" />
+        <KpiCard icon={<ErrorIcon />}    label="Erreurs"        value={num(usage.errors)}         sub="événements signalés" color="rose" />
+      </div>
+
+      <div className="adash-charts-row">
+        <BarListCard title="Sociétés les plus consultées" rows={usage.top_companies_viewed} />
+        <BarListCard title="PDF les plus ouverts" rows={usage.top_pdfs_opened} />
+      </div>
+
+      <div className="adash-charts-row">
+        <ErrorKindsCard rows={usage.error_kinds || []} total={usage.errors || 0} />
+      </div>
+    </>
+  );
+}
+
+function ErrorKindsCard({ rows, total }) {
+  return (
+    <div className="adash-card">
+      <div className="adash-card-header">
+        <span className="adash-card-title">Types d'erreurs</span>
+        <span className="adash-card-sub">{total} au total</span>
+      </div>
+      <div className="adash-devices">
+        {rows.length === 0 && <div className="adash-empty">Aucune erreur enregistrée.</div>}
+        {rows.map(([kind, count]) => (
+          <div key={kind} className="adash-device-row adash-geo-row">
+            <div className="adash-device-label">
+              <span className="adash-list-name" title={kind}>{kind}</span>
+            </div>
+            <div className="adash-device-stats">
+              <span className="adash-device-count">{num(count)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Composants partagés ──────────────────────────────────────────────────── */
+
 function DistributionCard({ title, rows = [] }) {
   const total = rows.reduce((s, r) => s + r.count, 0);
   return (
     <div className="adash-card">
       <div className="adash-card-header">
         <span className="adash-card-title">{title}</span>
-        <span className="adash-card-sub">{total} events</span>
+        <span className="adash-card-sub">{num(total)} événements</span>
       </div>
       <div className="adash-devices">
-        {rows.length === 0 && <div className="adash-empty">No data</div>}
+        {rows.length === 0 && <div className="adash-empty">Aucune donnée</div>}
         {rows.map((r) => {
           const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
           return (
@@ -270,7 +805,7 @@ function DistributionCard({ title, rows = [] }) {
                 <span>{r.name}</span>
               </div>
               <div className="adash-device-stats">
-                <span className="adash-device-count">{r.count}</span>
+                <span className="adash-device-count">{num(r.count)}</span>
                 <span className="adash-device-pct">{pct}%</span>
               </div>
             </div>
@@ -281,13 +816,12 @@ function DistributionCard({ title, rows = [] }) {
   );
 }
 
-/* ── Timeline ─────────────────────────────────────────────────────────────── */
-
 const TL_SERIES = [
-  { key: "visits",    label: "Visits",    color: "var(--adash-blue)" },
-  { key: "questions", label: "Questions", color: "var(--adash-amber)" },
-  { key: "logins",    label: "Logins",    color: "var(--adash-teal)" },
-  { key: "pdf_opens", label: "PDF opens", color: "var(--adash-purple)" },
+  { key: "visits",    label: "Visites",       color: "var(--adash-blue)" },
+  { key: "questions", label: "Questions",     color: "var(--adash-amber)" },
+  { key: "logins",    label: "Connexions",    color: "var(--adash-teal)" },
+  { key: "signups",   label: "Inscriptions",  color: "var(--adash-purple)" },
+  { key: "pdf_opens", label: "PDF ouverts",   color: "var(--adash-rose)" },
 ];
 
 function TimelineCard({ timeline }) {
@@ -298,7 +832,7 @@ function TimelineCard({ timeline }) {
   return (
     <div className="adash-card">
       <div className="adash-card-header">
-        <span className="adash-card-title">Activity — Last 30 Days</span>
+        <span className="adash-card-title">Activité — 30 derniers jours</span>
         <div className="adash-seg">
           {TL_SERIES.map((s) => (
             <button
@@ -334,12 +868,50 @@ function TimelineCard({ timeline }) {
   );
 }
 
-/* ── Hour heatmap ─────────────────────────────────────────────────────────── */
+function TimeChart({ title, series, timeline }) {
+  const [metric, setMetric] = useState(series[0]?.key);
+  const active = series.find((s) => s.key === metric) || series[0];
+  const max = Math.max(...timeline.map((d) => d[metric] || 0), 1);
+  return (
+    <div className="adash-card">
+      <div className="adash-card-header">
+        <span className="adash-card-title">{title}</span>
+        <div className="adash-seg">
+          {series.map((s) => (
+            <button
+              key={s.key}
+              className={`adash-seg-btn ${metric === s.key ? "active" : ""}`}
+              onClick={() => setMetric(s.key)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="adash-spark">
+        {timeline.map((d) => {
+          const v = d[metric] || 0;
+          return (
+            <div key={d.date} className="adash-spark-col" title={`${d.date} — ${v} ${active?.label?.toLowerCase()}`}>
+              <div className="adash-spark-track">
+                <div className="adash-spark-fill" style={{ height: `${(v / max) * 100}%`, background: active?.color }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="adash-spark-axis">
+        <span>{timeline[0]?.date}</span>
+        <span>{timeline[timeline.length - 1]?.date}</span>
+      </div>
+    </div>
+  );
+}
 
 const HOUR_SERIES = [
-  { key: "visits",        label: "Visits",        color: "var(--adash-blue)" },
-  { key: "questions",     label: "Questions",     color: "var(--adash-amber)" },
-  { key: "failed_logins", label: "Failed logins", color: "var(--adash-rose)" },
+  { key: "visits",        label: "Visites",        color: "var(--adash-blue)" },
+  { key: "questions",     label: "Questions",      color: "var(--adash-amber)" },
+  { key: "failed_logins", label: "Échecs connexion", color: "var(--adash-rose)" },
 ];
 
 function HourHeatmap({ hours }) {
@@ -351,7 +923,7 @@ function HourHeatmap({ hours }) {
   return (
     <div className="adash-card">
       <div className="adash-card-header">
-        <span className="adash-card-title">Activity by Hour (UTC)</span>
+        <span className="adash-card-title">Activité par heure (UTC)</span>
         <div className="adash-seg">
           {HOUR_SERIES.map((s) => (
             <button
@@ -383,27 +955,25 @@ function HourHeatmap({ hours }) {
   );
 }
 
-/* ── Locations ────────────────────────────────────────────────────────────── */
-
 function LocationsCard({ countries = [], cities = [] }) {
   const total = countries.reduce((s, c) => s + c.visitors, 0);
 
   return (
     <div className="adash-card">
       <div className="adash-card-header">
-        <span className="adash-card-title">Locations</span>
+        <span className="adash-card-title">Localisations</span>
         <span className="adash-card-sub">
-          {total} {total === 1 ? "visitor" : "visitors"} resolved
+          {total} {total === 1 ? "visiteur" : "visiteurs"} localisés
         </span>
       </div>
       {total === 0 && cities.length === 0 ? (
-        <div className="adash-empty">No location data yet</div>
+        <div className="adash-empty">Aucune donnée de localisation pour le moment.</div>
       ) : (
         <div className="adash-geo-grid">
           <div>
-            <div className="adash-geo-heading">By country</div>
+            <div className="adash-geo-heading">Par pays</div>
             <div className="adash-devices">
-              {countries.length === 0 && <div className="adash-empty">Unknown</div>}
+              {countries.length === 0 && <div className="adash-empty">Inconnu</div>}
               {countries.map((c) => {
                 const pct = total > 0 ? Math.round((c.visitors / total) * 100) : 0;
                 return (
@@ -420,9 +990,9 @@ function LocationsCard({ countries = [], cities = [] }) {
                     </div>
                     <div className="adash-device-stats">
                       {c.demo_visitors > 0 && (
-                        <span className="adash-device-count">{c.demo_visitors} demo</span>
+                        <span className="adash-device-count">{c.demo_visitors} démo</span>
                       )}
-                      <span className="adash-device-count">{c.visitors}</span>
+                      <span className="adash-device-count">{num(c.visitors)}</span>
                       <span className="adash-device-pct">{pct}%</span>
                     </div>
                   </div>
@@ -431,9 +1001,9 @@ function LocationsCard({ countries = [], cities = [] }) {
             </div>
           </div>
           <div>
-            <div className="adash-geo-heading">Top cities</div>
+            <div className="adash-geo-heading">Villes principales</div>
             <div className="adash-devices">
-              {cities.length === 0 && <div className="adash-empty">Unknown</div>}
+              {cities.length === 0 && <div className="adash-empty">Inconnu</div>}
               {cities.map((c) => (
                 <div key={`${c.city}-${c.country_code}`} className="adash-device-row adash-geo-row">
                   <div className="adash-device-label">
@@ -442,7 +1012,7 @@ function LocationsCard({ countries = [], cities = [] }) {
                     <span className="adash-geo-sub">{c.country}</span>
                   </div>
                   <div className="adash-device-stats">
-                    <span className="adash-device-count">{c.visitors}</span>
+                    <span className="adash-device-count">{num(c.visitors)}</span>
                   </div>
                 </div>
               ))}
@@ -456,272 +1026,48 @@ function LocationsCard({ countries = [], cities = [] }) {
 
 function TopListsCard({ usage }) {
   const columns = [
-    { title: "Companies viewed", rows: toPairs(usage.top_companies_viewed) },
-    { title: "PDFs opened",      rows: toPairs(usage.top_pdfs_opened) },
-    { title: "Error kinds",      rows: toPairs(usage.error_kinds) },
+    { title: "Sociétés consultées", rows: toPairs(usage.top_companies_viewed) },
+    { title: "PDF ouverts",         rows: toPairs(usage.top_pdfs_opened) },
+    { title: "Types d'erreurs",     rows: toPairs(usage.error_kinds) },
   ];
   if (!columns.some((c) => c.rows.length)) return null;
 
   return (
     <div className="adash-charts-row">
-      {columns.map((col) => {
-        const max = Math.max(...col.rows.map((r) => r[1]), 1);
-        return (
-          <div key={col.title} className="adash-card">
-            <div className="adash-card-header">
-              <span className="adash-card-title">{col.title}</span>
-            </div>
-            <div className="adash-devices">
-              {col.rows.length === 0 && <div className="adash-empty">No data</div>}
-              {col.rows.map(([name, count]) => (
-                <div key={name} className="adash-device-row adash-geo-row">
-                  <div className="adash-device-label">
-                    <span className="adash-list-name" title={name}>{name}</span>
-                  </div>
-                  <div className="adash-device-stats">
-                    <span className="adash-device-count">{count}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ── Logins tab ───────────────────────────────────────────────────────────── */
-
-function LoginsTab({ data }) {
-  const { logins, login_log: log } = data;
-  const attackers = (logins.top_bruteforce || []).filter((r) => r.failed > 0);
-
-  return (
-    <>
-      <div className="adash-kpi-grid">
-        <KpiCard icon={<UserIcon />}   label="Attempts"      value={logins.total_attempts} sub="every sign-in try" color="blue" />
-        <KpiCard icon={<CheckIcon />}  label="Successful"    value={logins.total_success}  sub={`${logins.success_rate}% success rate`} color="teal" />
-        <KpiCard icon={<LockIcon />}   label="Failed"        value={logins.total_failed}   sub="wrong credentials" color="rose" />
-        <KpiCard icon={<AlertIcon />}  label="Signups"       value={logins.signups || 0}   sub="accounts created" color="amber" />
-      </div>
-
-      <div className="adash-card">
-        <div className="adash-card-header">
-          <span className="adash-card-title">Credentials tried</span>
-          <span className="adash-card-sub">pass / fail split per account</span>
-        </div>
-        {(logins.by_email || []).length === 0 ? (
-          <div className="adash-empty">No login attempt recorded yet</div>
-        ) : (
-          <div className="adash-table-wrap">
-            <table className="adash-table">
-              <thead>
-                <tr>
-                  <th>Email</th>
-                  <th className="adash-num">Attempts</th>
-                  <th className="adash-num">Success</th>
-                  <th className="adash-num">Failed</th>
-                  <th className="adash-num">Unique IPs</th>
-                  <th>First seen</th>
-                  <th>Last seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logins.by_email.map((r) => (
-                  <tr key={r.email}>
-                    <td className="adash-loc">{r.email}</td>
-                    <td className="adash-num">{r.attempts}</td>
-                    <td className="adash-num">{r.success}</td>
-                    <td className={`adash-num ${r.failed ? "adash-num-hot" : ""}`}>{r.failed}</td>
-                    <td className="adash-num">{r.unique_ips}</td>
-                    <td className="adash-cell-muted">{formatWhen(r.first_seen)}</td>
-                    <td className="adash-cell-muted">{formatWhen(r.last_seen)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {attackers.length > 0 && (
-        <div className="adash-card adash-abuse-card">
+      {columns.map((col) => (
+        <div key={col.title} className="adash-card">
           <div className="adash-card-header">
-            <span className="adash-card-title">
-              <span className="adash-abuse-dot" />
-              Failed sign-in attempts by IP
-            </span>
-            <span className="adash-card-sub">possible credential guessing</span>
+            <span className="adash-card-title">{col.title}</span>
           </div>
-          <div className="adash-table-wrap">
-            <table className="adash-table">
-              <thead>
-                <tr>
-                  <th>IP address</th>
-                  <th>Location</th>
-                  <th className="adash-num">Failed</th>
-                  <th>Last attempt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attackers.map((r) => (
-                  <tr key={r.ip_hash}>
-                    <td><code className="adash-ip">{r.ip || "—"}</code></td>
-                    <td>
-                      <span className="adash-flag">{flagOf("")}</span>
-                      <span className="adash-loc">{r.location}</span>
-                    </td>
-                    <td className="adash-num adash-num-hot">{r.failed}</td>
-                    <td className="adash-cell-muted">{formatWhen(r.last_seen)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="adash-devices">
+            {col.rows.length === 0 && <div className="adash-empty">Aucune donnée</div>}
+            {col.rows.map(([name, count]) => (
+              <div key={name} className="adash-device-row adash-geo-row">
+                <div className="adash-device-label">
+                  <span className="adash-list-name" title={name}>{name}</span>
+                </div>
+                <div className="adash-device-stats">
+                  <span className="adash-device-count">{num(count)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
-
-      <div className="adash-card">
-        <div className="adash-card-header">
-          <span className="adash-card-title">Login log</span>
-          <span className="adash-card-sub">newest first</span>
-        </div>
-        <LogTable rows={log} />
-      </div>
-    </>
-  );
-}
-
-function LogTable({ rows }) {
-  if (!rows || rows.length === 0) return <div className="adash-empty">Nothing logged yet</div>;
-  return (
-    <div className="adash-table-wrap">
-      <table className="adash-table">
-        <thead>
-          <tr>
-            <th>When</th>
-            <th>Result</th>
-            <th>Email</th>
-            <th>Password</th>
-            <th>IP address</th>
-            <th>Location</th>
-            <th>Via</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.ip_hash}-${r.ts}-${i}`}>
-              <td className="adash-cell-muted">{formatWhen(r.ts)}</td>
-              <td>
-                <span className={`adash-chip ${r.ok ? "adash-chip-demo" : "adash-chip-fail"}`}>
-                  {r.ok ? "success" : "failed"}
-                </span>
-              </td>
-              <td className="adash-loc">{r.email || "—"}</td>
-              <td><code className="adash-pwd">{r.password || "—"}</code></td>
-              <td><code className="adash-ip">{r.ip || "—"}</code></td>
-              <td>{r.location}</td>
-              <td className="adash-cell-muted">{r.kind || "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      ))}
     </div>
   );
 }
 
-/* ── Chat tab ─────────────────────────────────────────────────────────────── */
-
-function ChatTab({ data }) {
-  const { chat, questions } = data;
-  const [query, setQuery] = useState("");
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return questions;
-    return questions.filter((r) =>
-      [r.question, r.company, r.location, r.role].some((v) =>
-        String(v || "").toLowerCase().includes(q)
-      )
-    );
-  }, [questions, query]);
-
-  const counters = [
-    { label: "Questions asked",    value: chat.total_questions },
-    { label: "Unique askers",     value: chat.unique_askers },
-    { label: "Per asker",         value: chat.questions_per_asker },
-    { label: "Avg latency",       value: formatMs(chat.avg_latency_ms) },
-    { label: "p50 latency",       value: formatMs(chat.p50_latency_ms) },
-    { label: "p95 latency",       value: formatMs(chat.p95_latency_ms) },
-    { label: "Max latency",       value: formatMs(chat.max_latency_ms) },
-    { label: "With sources",      value: `${chat.source_rate ?? 0}%` },
-    { label: "Error rate",        value: `${chat.error_rate ?? 0}%` },
-  ];
-
-  return (
-    <>
-      <div className="adash-kpi-grid">
-        <KpiCard icon={<ChatIcon />}   label="Questions"    value={chat.total_questions} sub={`${chat.unique_askers ?? 0} askers`} color="amber" />
-        <KpiCard icon={<UsersIcon />}  label="Per Visitor"  value={chat.questions_per_asker} sub="avg questions" color="blue" />
-        <KpiCard icon={<ClockIcon />}  label="Avg Response" value={formatMs(chat.avg_latency_ms)} sub={`p95 ${formatMs(chat.p95_latency_ms)}`} color="teal" />
-        <KpiCard icon={<CheckIcon />}  label="Answered"     value={`${chat.source_rate ?? 0}%`} sub="carried a citation" color="purple" />
-      </div>
-
-      <div className="adash-charts-row">
-        <BarListCard title="Top companies asked about" rows={chat.top_companies} />
-        <BarListCard title="Top years asked"          rows={chat.top_years} />
-        <BarListCard title="Top sectors"              rows={chat.top_sectors} />
-      </div>
-
-      <div className="adash-card">
-        <div className="adash-card-header">
-          <span className="adash-card-title">Question log</span>
-          <div className="adash-search">
-            <input
-              className="adash-search-input"
-              placeholder="Filter by question, company, location, role…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            {query && (
-              <button className="adash-search-clear" onClick={() => setQuery("")} title="Clear">×</button>
-            )}
-          </div>
-        </div>
-        <div className="adash-card-sub adash-count-note">
-          {filtered.length} of {questions.length} shown
-        </div>
-        <QuestionTable rows={filtered} />
-      </div>
-
-      <div className="adash-card">
-        <div className="adash-card-header">
-          <span className="adash-card-title">Latency &amp; quality</span>
-        </div>
-        <div className="adash-metric-grid">
-          {counters.map((c) => (
-            <div key={c.label} className="adash-metric">
-              <span className="adash-metric-val">{c.value ?? "—"}</span>
-              <span className="adash-metric-lbl">{c.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-function BarListCard({ title, rows = [] }) {
+function BarListCard({ title, rows = [], wide = false }) {
   const pairs = toPairs(rows);
   const max = Math.max(...pairs.map((r) => r[1]), 1);
   return (
-    <div className="adash-card">
+    <div className={`adash-card ${wide ? "adash-card-wide" : ""}`}>
       <div className="adash-card-header">
         <span className="adash-card-title">{title}</span>
       </div>
       <div className="adash-devices">
-        {pairs.length === 0 && <div className="adash-empty">No data</div>}
+        {pairs.length === 0 && <div className="adash-empty">Aucune donnée</div>}
         {pairs.map(([name, count]) => (
           <div key={name} className="adash-device-row">
             <div className="adash-device-label">
@@ -734,7 +1080,7 @@ function BarListCard({ title, rows = [] }) {
               />
             </div>
             <div className="adash-device-stats">
-              <span className="adash-device-count">{count}</span>
+              <span className="adash-device-count">{num(count)}</span>
             </div>
           </div>
         ))}
@@ -744,19 +1090,19 @@ function BarListCard({ title, rows = [] }) {
 }
 
 function QuestionTable({ rows }) {
-  if (!rows || rows.length === 0) return <div className="adash-empty">No question logged yet</div>;
+  if (!rows || rows.length === 0) return <div className="adash-empty">Aucune question enregistrée pour le moment.</div>;
   return (
     <div className="adash-table-wrap">
       <table className="adash-table">
         <thead>
           <tr>
-            <th>When</th>
+            <th>Quand</th>
             <th>Question</th>
-            <th>Scope</th>
-            <th>Role</th>
-            <th>Location</th>
+            <th>Périmètre</th>
+            <th>Rôle</th>
+            <th>Localisation</th>
             <th>IP</th>
-            <th className="adash-num">Time</th>
+            <th className="adash-num">Temps</th>
             <th className="adash-num">Src</th>
           </tr>
         </thead>
@@ -766,7 +1112,7 @@ function QuestionTable({ rows }) {
               <td className="adash-cell-muted">{timeOnly(r.ts)}</td>
               <td className="adash-question">{r.question || "—"}</td>
               <td className="adash-cell-muted">
-                {r.company || "all reports"}
+                {r.company || "tous les rapports"}
                 {r.year ? ` · ${r.year}` : ""}
               </td>
               <td>
@@ -790,9 +1136,7 @@ function QuestionTable({ rows }) {
   );
 }
 
-/* ── Visitors tab ─────────────────────────────────────────────────────────── */
-
-function VisitorsTab({ visitors }) {
+function VisitorsTable({ visitors }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("last_seen");
   const [expanded, setExpanded] = useState(null);
@@ -817,17 +1161,17 @@ function VisitorsTab({ visitors }) {
   }, [visitors, query, sort]);
 
   if (!visitors || visitors.length === 0) {
-    return <div className="adash-card"><div className="adash-empty">No visitor data yet</div></div>;
+    return <div className="adash-card"><div className="adash-empty">Aucune donnée visiteur pour le moment.</div></div>;
   }
 
   return (
     <div className="adash-card">
       <div className="adash-card-header">
-        <span className="adash-card-title">Visitors — IP &amp; activity</span>
+        <span className="adash-card-title">Visiteurs — IP &amp; activité</span>
         <div className="adash-search">
           <input
             className="adash-search-input"
-            placeholder="Filter IP, city, ISP, browser…"
+            placeholder="Filtrer IP, ville, FAI, navigateur…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -836,34 +1180,34 @@ function VisitorsTab({ visitors }) {
             value={sort}
             onChange={(e) => setSort(e.target.value)}
           >
-            <option value="last_seen">Most recent</option>
-            <option value="questions">Most questions</option>
-            <option value="failures">Most failed logins</option>
-            <option value="events">Most events</option>
+            <option value="last_seen">Plus récents</option>
+            <option value="questions">Plus de questions</option>
+            <option value="failures">Plus d'échecs</option>
+            <option value="events">Plus d'événements</option>
           </select>
         </div>
       </div>
       <div className="adash-card-sub adash-count-note">
-        {rows.length} of {visitors.length} unique IPs
+        {rows.length} sur {visitors.length} IP uniques
       </div>
       <div className="adash-table-wrap">
         <table className="adash-table">
           <thead>
             <tr>
-              <th>Location</th>
-              <th>IP address</th>
-              <th>ISP</th>
+              <th>Localisation</th>
+              <th>Adresse IP</th>
+              <th>FAI</th>
               <th>Client</th>
-              <th>Device</th>
-              <th>Account</th>
-              <th className="adash-num">Visits</th>
-              <th className="adash-num">Logins</th>
-              <th className="adash-num">Failed</th>
+              <th>Appareil</th>
+              <th>Compte</th>
+              <th className="adash-num">Visites</th>
+              <th className="adash-num">Conn.</th>
+              <th className="adash-num">Échecs</th>
               <th className="adash-num">Qs</th>
-              <th className="adash-num">PDFs</th>
+              <th className="adash-num">PDF</th>
               <th className="adash-num">Cos</th>
-              <th>Span</th>
-              <th>Last seen</th>
+              <th>Période</th>
+              <th>Vu le</th>
             </tr>
           </thead>
           <tbody>
@@ -894,12 +1238,12 @@ function VisitorsTab({ visitors }) {
                       <span className="adash-cell-muted">—</span>
                     )}
                   </td>
-                  <td className="adash-num">{v.visits}</td>
-                  <td className="adash-num">{v.logins_ok ?? 0}</td>
-                  <td className={`adash-num ${v.logins_fail ? "adash-num-hot" : ""}`}>{v.logins_fail ?? 0}</td>
-                  <td className="adash-num">{v.questions}</td>
-                  <td className="adash-num">{v.pdf_opens}</td>
-                  <td className="adash-num">{v.companies_explored}</td>
+                  <td className="adash-num">{num(v.visits)}</td>
+                  <td className="adash-num">{num(v.logins_ok ?? 0)}</td>
+                  <td className={`adash-num ${v.logins_fail ? "adash-num-hot" : ""}`}>{num(v.logins_fail ?? 0)}</td>
+                  <td className="adash-num">{num(v.questions)}</td>
+                  <td className="adash-num">{num(v.pdf_opens)}</td>
+                  <td className="adash-num">{num(v.companies_explored)}</td>
                   <td className="adash-cell-muted">{duration(v.first_seen, v.last_seen)}</td>
                   <td className="adash-cell-muted">{formatWhen(v.last_seen)}</td>
                 </tr>
@@ -908,28 +1252,28 @@ function VisitorsTab({ visitors }) {
                     <td colSpan={14}>
                       <div className="adash-detail">
                         <div>
-                          <span className="adash-detail-lbl">First seen</span>
+                          <span className="adash-detail-lbl">Première visite</span>
                           <span className="adash-detail-val">{formatWhen(v.first_seen)}</span>
                         </div>
                         <div>
                           <span className="adash-detail-lbl">Sessions</span>
-                          <span className="adash-detail-val">{v.sessions}</span>
+                          <span className="adash-detail-val">{num(v.sessions)}</span>
                         </div>
                         <div>
-                          <span className="adash-detail-lbl">Total events</span>
-                          <span className="adash-detail-val">{v.total_events}</span>
+                          <span className="adash-detail-lbl">Événements</span>
+                          <span className="adash-detail-val">{num(v.total_events)}</span>
                         </div>
                         <div>
-                          <span className="adash-detail-lbl">Avg latency</span>
+                          <span className="adash-detail-lbl">Latence moyenne</span>
                           <span className="adash-detail-val">{formatMs(v.avg_latency_ms)}</span>
                         </div>
                         <div>
-                          <span className="adash-detail-lbl">Demo messages</span>
-                          <span className="adash-detail-val">{v.demo_messages}</span>
+                          <span className="adash-detail-lbl">Messages démo</span>
+                          <span className="adash-detail-val">{num(v.demo_messages)}</span>
                         </div>
                         <div>
-                          <span className="adash-detail-lbl">Demo limit hits</span>
-                          <span className="adash-detail-val">{v.demo_exhausted}</span>
+                          <span className="adash-detail-lbl">Fins de démo</span>
+                          <span className="adash-detail-val">{num(v.demo_exhausted)}</span>
                         </div>
                       </div>
                     </td>
@@ -943,8 +1287,6 @@ function VisitorsTab({ visitors }) {
     </div>
   );
 }
-
-/* ── Shared bits ──────────────────────────────────────────────────────────── */
 
 function KpiCard({ icon, label, value, sub, color }) {
   return (
@@ -960,13 +1302,13 @@ function KpiCard({ icon, label, value, sub, color }) {
 }
 
 function BarChart({ data, color }) {
-  if (!data || data.length === 0) return <div className="adash-empty">No data</div>;
+  if (!data || data.length === 0) return <div className="adash-empty">Aucune donnée</div>;
   const max = Math.max(...data.map((d) => d.count), 1);
   return (
     <div className="adash-barchart">
       {data.map((d) => (
         <div key={d.date} className="adash-bar-col">
-          <div className="adash-bar-tooltip">{d.count}</div>
+          <div className="adash-bar-tooltip">{num(d.count)}</div>
           <div className="adash-bar-track">
             <div
               className="adash-bar-fill"
@@ -988,32 +1330,32 @@ function AbuseInsight({ exhausted, logins }) {
       <div className="adash-card-header">
         <span className="adash-card-title">
           <span className="adash-abuse-dot" />
-          Browser-Switch Detection
+          Détection de contournement navigateur
         </span>
-        <span className="adash-card-sub">demo bypass analysis</span>
+        <span className="adash-card-sub">analyse de la limite démo</span>
       </div>
       <div className="adash-abuse-grid">
         <div className="adash-abuse-stat">
-          <span className="adash-abuse-val">{exhausted}</span>
-          <span className="adash-abuse-lbl">Times limit reached</span>
+          <span className="adash-abuse-val">{num(exhausted)}</span>
+          <span className="adash-abuse-lbl">Fois limite atteinte</span>
         </div>
         <div className="adash-abuse-stat">
-          <span className="adash-abuse-val">{logins}</span>
-          <span className="adash-abuse-lbl">Demo logins total</span>
+          <span className="adash-abuse-val">{num(logins)}</span>
+          <span className="adash-abuse-lbl">Connexions démo</span>
         </div>
         <div className="adash-abuse-stat">
           <span className="adash-abuse-val adash-abuse-highlight">{bypassRate}%</span>
-          <span className="adash-abuse-lbl">Exhaustion rate</span>
+          <span className="adash-abuse-lbl">Taux d'épuisement</span>
         </div>
         <div className="adash-abuse-stat">
-          <span className="adash-abuse-val adash-abuse-highlight">{suspected}</span>
-          <span className="adash-abuse-lbl">Potential bypasses</span>
+          <span className="adash-abuse-val adash-abuse-highlight">{num(suspected)}</span>
+          <span className="adash-abuse-lbl">Contournements probables</span>
         </div>
       </div>
       <p className="adash-abuse-note">
-        "Potential bypasses" = times the limit was hit beyond the number of distinct
-        demo logins — each extra count likely means a new browser/private window was used
-        to reset the localStorage counter.
+        « Contournements probables » = fois où la limite a été atteinte au-delà du nombre de
+        connexions démo distinctes — chaque écart laisse penser qu'un nouveau navigateur /
+        fenêtre privée a été utilisé pour réinitialiser le compteur local.
       </p>
     </div>
   );
@@ -1048,12 +1390,22 @@ function ErrorState({ message, onRetry }) {
         <path d="M10 6v5M10 13.5h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
       </svg>
       <p>{message}</p>
-      <button className="adash-retry-btn" onClick={onRetry}>Retry</button>
+      <button className="adash-retry-btn" onClick={onRetry}>Réessayer</button>
     </div>
   );
 }
 
-/* ── Icons ────────────────────────────────────────────────────────────────── */
+/* ── Icônes ────────────────────────────────────────────────────────────────── */
+
+function GaugeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+      <path d="M3 12a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M10 12l3-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="10" cy="13" r="1.4" fill="currentColor"/>
+    </svg>
+  );
+}
 
 function EyeIcon() {
   return (
@@ -1161,6 +1513,14 @@ function ClockIcon() {
     <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
       <circle cx="8" cy="8" r="6.4" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M8 4.5V8l2.4 1.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+      <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }

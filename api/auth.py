@@ -14,7 +14,7 @@ import secrets
 from datetime import date as date_cls
 from typing import Optional
 
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from db.models import ChatHistory, User
@@ -277,3 +277,67 @@ def get_history(db: Session, user: User, limit: int = 100) -> list[dict]:
             ],
         })
     return out
+
+
+def admin_user_history(db: Session, user_id: int, limit: int = 100) -> dict | None:
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        return None
+    return {
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+        },
+        "messages": get_history(db, user, limit),
+    }
+
+
+def admin_users(db: Session, limit: int = 500) -> dict:
+    """Registered accounts with per-account usage for the admin dashboard.
+
+    Message counts and last activity come from chat_history; today's quota
+    consumption comes from the daily counters on the account row.
+    """
+    counts: dict[int, dict] = {}
+    for user_id, total, last in (
+        db.query(
+            ChatHistory.user_id,
+            func.count(ChatHistory.id),
+            func.max(ChatHistory.created_at),
+        )
+        .group_by(ChatHistory.user_id)
+        .all()
+    ):
+        counts[user_id] = {
+            "total": int(total),
+            "last": last.isoformat() if last else None,
+        }
+
+    today = date_cls.today()
+    users = (
+        db.query(User)
+        .order_by(User.created_at.desc())
+        .limit(min(limit, 2000))
+        .all()
+    )
+    out = []
+    for u in users:
+        used_today = u.daily_msgs_used if u.quota_date == today else 0
+        stat = counts.get(u.id, {})
+        out.append({
+            "id": u.id,
+            "full_name": u.full_name,
+            "email": u.email,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "messages_total": stat.get("total", 0),
+            "last_message_at": stat.get("last"),
+            "quota_used_today": used_today,
+            "quota_left_today": max(0, DAILY_QUOTA - used_today),
+            "quota_day": DAILY_QUOTA,
+        })
+    return {
+        "total": len(out),
+        "quota_day": DAILY_QUOTA,
+        "users": out,
+    }
