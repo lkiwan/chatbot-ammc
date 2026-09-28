@@ -503,7 +503,7 @@ function LoginsTab({ data }) {
         <KpiCard icon={<UserIcon />}   label="Attempts"      value={logins.total_attempts} sub="every sign-in try" color="blue" />
         <KpiCard icon={<CheckIcon />}  label="Successful"    value={logins.total_success}  sub={`${logins.success_rate}% success rate`} color="teal" />
         <KpiCard icon={<LockIcon />}   label="Failed"        value={logins.total_failed}   sub="wrong credentials" color="rose" />
-        <KpiCard icon={<AlertIcon />}  label="IPs Failing"   value={attackers.length}      sub="distinct sources" color="amber" />
+        <KpiCard icon={<AlertIcon />}  label="Signups"       value={logins.signups || 0}   sub="accounts created" color="amber" />
       </div>
 
       <div className="adash-card">

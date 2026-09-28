@@ -26,6 +26,7 @@ _EMPTY = {
     "demo_messages": [],
     "demo_exhausted": [],
     "login_attempts": [],
+    "signups": [],
     "chat_messages": [],
     "pdf_opens": [],
     "company_selects": [],
@@ -39,6 +40,7 @@ _BUCKET = {
     "demo_message": "demo_messages",
     "demo_exhausted": "demo_exhausted",
     "login_attempt": "login_attempts",
+    "signup": "signups",
     "chat_message": "chat_messages",
     "pdf_open": "pdf_opens",
     "company_select": "company_selects",
@@ -51,7 +53,7 @@ _BUCKET = {
 _META_FIELDS = (
     "ok", "email", "password", "question", "company", "year", "sector", "page", "report",
     "latency_ms", "sources", "chars", "scope", "error", "path", "count",
-    "screen", "lang", "referrer", "kind", "session",
+    "screen", "lang", "referrer", "kind", "session", "reason",
 )
 _META_MAX_LEN = 240
 # Free-text fields that get hard-truncated. Everything else is a short enum or
@@ -594,6 +596,7 @@ def get_login_funnel() -> dict:
         "total_success": success,
         "total_failed": total - success,
         "success_rate": round(success / total * 100) if total else 0,
+        "signups": len(data.get("signups", [])),
         "by_email": rows,
         "top_bruteforce": sorted(
             failed_ips.values(), key=lambda r: -r["failed"]
@@ -772,6 +775,7 @@ def get_timeline(days: int = 30) -> list[dict]:
             "visits": count(data.get("visits", [])),
             "questions": count(data.get("chat_messages", [])),
             "logins": count(data.get("login_attempts", [])),
+            "signups": count(data.get("signups", [])),
             "errors": count(data.get("errors", [])),
             "pdf_opens": count(data.get("pdf_opens", [])),
         })

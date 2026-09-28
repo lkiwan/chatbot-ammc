@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from api import auth
 from api.analytics import (append_event, get_deep, get_summary, get_visitors,
                            is_private_ip)
 
@@ -32,6 +33,9 @@ from config import (API_TOKEN, CHUNKS_DIR, CORS_ORIGINS, LLM_MODEL, PDFS_DIR,
 from extract import sanitize_stem
 
 # Optional PostgreSQL-backed retrieval (graceful degradation if DB not running)
+from db.models import ChatHistory
+from db.session import get_db
+
 try:
     from db.session import check_connection
     from retrieval.hybrid_retriever import HybridRetriever
@@ -230,10 +234,10 @@ def _total_counts():
 class TrackRequest(BaseModel):
     type: Literal[
         "visit", "demo_login", "demo_message", "demo_exhausted",
-        "login_attempt", "chat_message", "pdf_open", "company_select",
+        "login_attempt", "signup", "chat_message", "pdf_open", "company_select",
         "logout", "error",
     ]
-    role: Literal["", "demo", "admin"] = ""
+    role: Literal["", "demo", "admin", "user"] = ""
     meta: dict = {}
 
 
@@ -273,7 +277,156 @@ class ChatRequest(BaseModel):
     year: str | None = None
     sector: str | None = None
     # client-declared role, purely for analytics attribution
-    role: Literal["", "demo", "admin"] = ""
+    role: Literal["", "demo", "admin", "user"] = ""
+    # account session token; when present the daily quota is enforced and the
+    # Q&A is saved to the user's server-side history
+    token: str = ""
+
+
+class SignupRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+def _bearer_token(request: Request) -> str:
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        return header[7:].strip()
+    return ""
+
+
+def _user_context(request_token: str) -> tuple:
+    """Authorize an account token and consume one daily message.
+
+    Returns (db, user). Raises 503/401/402 (via HTTPException) when the
+    database is down, the token is invalid, or the daily quota is used up.
+    """
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    db = get_db().__enter__()
+    try:
+        user = auth.get_user_by_token(db, request_token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
+        try:
+            auth.consume_message(db, user)
+        except auth.QuotaExceeded:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Quota quotidien atteint ({auth.DAILY_QUOTA} messages). Revenez demain.",
+            )
+        return db, user
+    except Exception:
+        db.close()
+        raise
+
+
+# ── Account routes ──────────────────────────────────────────────────────────
+
+@app.post("/api/auth/signup")
+def signup(req: SignupRequest, request: Request):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    try:
+        with get_db() as db:
+            user = auth.signup(db, req.full_name, req.email, req.password)
+            left = auth.DAILY_QUOTA
+    except auth.AuthError as exc:
+        tracking = {"email": req.email, "ok": False, "reason": exc.message[:200]}
+        try:
+            append_event("signup", ua=request.headers.get("user-agent", ""),
+                         ip=_client_ip(request), role="user", meta=tracking)
+        except Exception:
+            pass
+        raise HTTPException(status_code=exc.status, detail=exc.message)
+    try:
+        append_event("signup", ua=request.headers.get("user-agent", ""),
+                     ip=_client_ip(request), role="user", meta={"email": user.email, "ok": True})
+    except Exception:
+        pass
+    return {
+        "user": auth.public_user(user),
+        "token": user.token,
+        "quota_day": auth.DAILY_QUOTA,
+        "quota_left": left,
+    }
+
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest, request: Request):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    try:
+        with get_db() as db:
+            user = auth.login(db, req.email, req.password)
+            left = auth.quota_left(db, user)
+    except AuthError as exc:
+        try:
+            append_event("login_attempt", ua=request.headers.get("user-agent", ""),
+                         ip=_client_ip(request), role="user",
+                         meta={"email": req.email, "ok": False})
+        except Exception:
+            pass
+        raise HTTPException(status_code=exc.status, detail=exc.message)
+    try:
+        append_event("login_attempt", ua=request.headers.get("user-agent", ""),
+                     ip=_client_ip(request), role="user",
+                     meta={"email": user.email, "ok": True})
+    except Exception:
+        pass
+    return {
+        "user": auth.public_user(user),
+        "token": user.token,
+        "quota_day": auth.DAILY_QUOTA,
+        "quota_left": left,
+    }
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    with get_db() as db:
+        user = auth.get_user_by_token(db, _bearer_token(request))
+        if user is None:
+            raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
+        left = auth.quota_left(db, user)
+    return {
+        "user": auth.public_user(user),
+        "token": user.token,
+        "quota_day": auth.DAILY_QUOTA,
+        "quota_left": left,
+    }
+
+
+@app.get("/api/history")
+def history(request: Request, limit: int = Query(200, ge=1, le=500)):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    with get_db() as db:
+        user = auth.get_user_by_token(db, _bearer_token(request))
+        if user is None:
+            raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
+        messages = auth.get_history(db, user, limit)
+    return {"messages": messages}
+
+
+@app.delete("/api/history")
+def clear_history(request: Request):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    with get_db() as db:
+        user = auth.get_user_by_token(db, _bearer_token(request))
+        if user is None:
+            raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
+        db.query(ChatHistory).filter(ChatHistory.user_id == user.id).delete(synchronize_session=False)
+    return {"ok": True}
 
 
 def _read_csv(name: str) -> list[dict]:
@@ -516,18 +669,40 @@ def chat(request: ChatRequest, http_request: Request):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message vide.")
     started = time.time()
-    try:
-        reply, sources = answer(
-            request.message,
-            request.history,
-            rapport=request.rapport,
-            company=request.company,
-            year=request.year,
-            sector=request.sector,
-        )
-    except Exception as exc:
-        _log_question(request, http_request, started, None, error=f"{type(exc).__name__}: {exc}")
-        raise
+
+    db, user = (None, None)
+    if request.token:
+        db, user = _user_context(request.token)
+        try:
+            reply, sources = answer(
+                request.message,
+                request.history,
+                rapport=request.rapport,
+                company=request.company,
+                year=request.year,
+                sector=request.sector,
+            )
+        except Exception as exc:
+            db.commit()
+            db.close()
+            _log_question(request, http_request, started, None, error=f"{type(exc).__name__}: {exc}")
+            raise
+        auth.add_history(db, user, request.message, reply, request.company, request.year, sources)
+        db.commit()
+        db.close()
+    else:
+        try:
+            reply, sources = answer(
+                request.message,
+                request.history,
+                rapport=request.rapport,
+                company=request.company,
+                year=request.year,
+                sector=request.sector,
+            )
+        except Exception as exc:
+            _log_question(request, http_request, started, None, error=f"{type(exc).__name__}: {exc}")
+            raise
     _log_question(request, http_request, started, sources, reply)
     return {"role": "assistant", "content": reply, "sources": sources}
 
@@ -537,6 +712,10 @@ def chat_stream(request: ChatRequest, http_request: Request):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message vide.")
     started = time.time()
+
+    db, user = (None, None)
+    if request.token:
+        db, user = _user_context(request.token)
 
     def generate():
         # Accumulated here so the log records the answer that was actually
@@ -567,6 +746,14 @@ def chat_stream(request: ChatRequest, http_request: Request):
             # A client that disconnects mid-stream still gets logged, which is
             # exactly the case worth knowing about.
             _log_question(request, http_request, started, sources, "".join(parts), error)
+            if db is not None:
+                try:
+                    if not error:
+                        auth.add_history(db, user, request.message, "".join(parts),
+                                         request.company, request.year, sources)
+                    db.commit()
+                finally:
+                    db.close()
 
     return StreamingResponse(
         generate(),

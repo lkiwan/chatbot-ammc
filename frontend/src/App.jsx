@@ -198,7 +198,11 @@ export default function App() {
               </button>
             )}
             <span className="topbar-user-role">
-              {auth.role === "admin" ? "Admin" : "Demo"}
+              {auth.role === "admin"
+                ? "Admin"
+                : auth.role === "user"
+                  ? (auth.full_name?.split(" ")[0] || "User")
+                  : "Demo"}
             </span>
             <button className="btn-logout" onClick={handleLogout} title="Sign out">
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
@@ -263,6 +267,7 @@ export default function App() {
             sector={selectedCompany?.sector}
             onOpenSource={setActiveSource}
             isDemo={auth?.role === "demo"}
+            userToken={auth?.role === "user" ? auth?.token || "" : ""}
             pdfOpen={pdfOpen}
             onTogglePdf={() => setPdfOpen((v) => !v)}
           />

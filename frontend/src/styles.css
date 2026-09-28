@@ -1187,9 +1187,34 @@ input, textarea { font-family: var(--sans); }
 }
 
 .login-brand {
-  text-align: center; margin-bottom: 32px;
+  text-align: center; margin-bottom: 24px;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
+.login-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  background: rgba(15,23,42,.04);
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: var(--radius); padding: 4px; margin-bottom: 18px;
+}
+.login-tab {
+  border: none; background: transparent; cursor: pointer;
+  font: 600 13px var(--sans); color: #64748b;
+  padding: 8px 6px; border-radius: 8px;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.login-tab.active {
+  background: #fff; color: #0f172a;
+  box-shadow: 0 1px 4px rgba(15,23,42,.12);
+}
+.signup-note {
+  justify-content: center; gap: 7px; margin-top: 14px;
+}
+.login-footer-link {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font: 600 13px var(--sans);
+  padding: 0;
+}
+.login-footer-link:hover { text-decoration: underline; }
 .login-logo {
   height: 90px; width: auto;
   object-fit: contain;

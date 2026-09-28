@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { sendChatStream, trackEvent } from "../api.js";
+import { deleteHistory, fetchHistory, fetchMe, sendChatStream, trackEvent } from "../api.js";
 import Markdown from "./Markdown.jsx";
 
 const LS_KEY       = "ammc-qa-history";
@@ -45,7 +45,7 @@ function loadHistory() {
   }
 }
 
-export default function ChatPanel({ company, companyName, year, sector, onOpenSource, isDemo, pdfOpen, onTogglePdf }) {
+export default function ChatPanel({ company, companyName, year, sector, onOpenSource, isDemo, userToken = "", pdfOpen, onTogglePdf }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,6 +54,10 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
   const bottomRef = useRef(null);
   const streamIdxRef = useRef(null);
   const [demoMsgsUsed, setDemoMsgsUsed] = useState(getDemoMsgsUsed);
+
+  // Server-side account quota (5 free messages/day, resets at midnight)
+  const isUser = !!userToken;
+  const [userQuota, setUserQuota] = useState(null);
 
   // Persistent Q&A history — survives new sessions and company/year changes
   const [qaHistory, setQaHistory] = useState(loadHistory);
@@ -71,6 +75,20 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
       // localStorage full or unavailable — fail silently
     }
   }, [qaHistory]);
+
+  // Signed-up users: quota + message history are authoritative on the server.
+  useEffect(() => {
+    if (!isUser) return;
+    let cancelled = false;
+    fetchMe()
+      .then((me) => { if (!cancelled) setUserQuota(me); })
+      .catch(() => {});
+    fetchHistory(200)
+      .then((res) => { if (!cancelled) setQaHistory(res.messages || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUser, userToken]);
 
   useEffect(() => {
     setMessages([]);
@@ -94,6 +112,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
     setQaHistory([]);
     setShowHistory(false);
     setExpandedIdx(null);
+    if (isUser) deleteHistory().catch(() => {});
   };
 
   const restoreConversation = (item) => {
@@ -134,6 +153,12 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
       setDemoMsgsUsed(next);
       trackEvent("demo_message");
       if (next >= DEMO_MSG_LIMIT) trackEvent("demo_exhausted");
+    }
+
+    // Account guard — the server also blocks, this keeps the UI instant
+    if (isUser && (!userQuota || userQuota.quota_left <= 0)) {
+      setError("Quota quotidien atteint (5 messages). Revenez demain.");
+      return;
     }
 
     setBusy(true);
@@ -184,15 +209,24 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
               },
               ...h,
             ].slice(0, MAX_HISTORY));
+            if (isUser) {
+              setUserQuota((q) => (q ? { ...q, quota_left: Math.max(0, q.quota_left - 1) } : q));
+            }
           },
         }
       );
     } catch (err) {
+      if (err?.status === 402) {
+        setUserQuota((q) => (q ? { ...q, quota_left: 0 } : q));
+        setError("Quota quotidien atteint (5 messages). Revenez demain.");
+        setMessages((m) => m.filter((_, i) => i !== streamIdxRef.current));
+        return;
+      }
       setError("Le modèle n'a pas répondu. Réessayez dans un instant.");
       setMessages((m) => m.filter((_, i) => i !== streamIdxRef.current));
       // The server already logs the question itself; this adds the client-side
       // failure reason (rate limit, network drop) that the server can't see.
-      trackEvent("error", isDemo ? "demo" : "admin", {
+      trackEvent("error", isDemo ? "demo" : isUser ? "user" : "admin", {
         kind: "chat_failed",
         error: err?.status ? `http_${err.status}` : (err?.message || "network"),
         company: company || "",
@@ -450,7 +484,30 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         </div>
       )}
 
-      {isDemo && demoMsgsUsed >= DEMO_MSG_LIMIT ? (
+      {isUser && userQuota && userQuota.quota_left <= 0 ? (
+        <div className="demo-limit-wall">
+          <div className="demo-limit-left">
+            <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+              <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M12 9v3M10 6.5h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M3.2 21l.8-.4M20.8 21l-.8-.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <div className="demo-limit-text">
+              <p className="demo-limit-title">5/5 messages utilisés aujourd'hui</p>
+              <p className="demo-limit-sub">
+                Votre quota gratuit de <strong>5 messages par jour</strong> est atteint.
+                Il sera réinitialisé demain à minuit. Vous pouvez toujours
+                <strong> consulter les entreprises et les rapports PDF </strong>.
+              </p>
+            </div>
+          </div>
+          <div className="demo-limit-pills">
+            <span className="demo-pill allowed">Browse reports</span>
+            <span className="demo-pill allowed">View PDFs</span>
+            <span className="demo-pill blocked">Chat</span>
+          </div>
+        </div>
+      ) : isDemo && demoMsgsUsed >= DEMO_MSG_LIMIT ? (
         <div className="demo-limit-wall">
           <div className="demo-limit-left">
             <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
@@ -515,12 +572,17 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
               </svg>
             </button>
           </div>
+          {isUser && userQuota && (
+            <p className="chat-hint demo-hint">
+              Compte · {userQuota.quota_left}/{userQuota.quota_day} messages restants aujourd'hui · reset à minuit
+            </p>
+          )}
           {isDemo && (
             <p className="chat-hint demo-hint">
               Demo · {DEMO_MSG_LIMIT - demoMsgsUsed} message{DEMO_MSG_LIMIT - demoMsgsUsed > 1 ? "s" : ""} remaining
             </p>
           )}
-          {!isDemo && (
+          {!isDemo && !isUser && (
             <p className="chat-hint">Entrée pour envoyer · Maj+Entrée pour nouvelle ligne</p>
           )}
         </>

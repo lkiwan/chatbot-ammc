@@ -83,19 +83,34 @@ export function trackError(kind, detail = "") {
 }
 
 /** Role of the current session, for analytics attribution. Never used for auth. */
-function currentRole() {
+function currentSession() {
   try {
-    return JSON.parse(sessionStorage.getItem("ae-session") || "{}").role || "";
+    return JSON.parse(sessionStorage.getItem("ae-session") || "{}");
   } catch {
-    return "";
+    return {};
   }
+}
+
+function currentRole() {
+  return currentSession().role || "";
+}
+
+function sessionToken() {
+  return currentSession().token || "";
+}
+
+function bearerHeaders(extra = {}) {
+  const headers = { "Content-Type": "application/json", ...extra };
+  const token = sessionToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
 
 export async function sendChat(message, history, { rapport, company, year, sector } = {}) {
   return request("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history, rapport, company, year, sector, role: currentRole() }),
+    body: JSON.stringify({ message, history, rapport, company, year, sector, role: currentRole(), token: sessionToken() }),
   });
 }
 
@@ -103,7 +118,7 @@ export async function sendChatStream(message, history, { rapport, company, year,
   const res = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ message, history, rapport, company, year, sector, role: currentRole() }),
+    body: JSON.stringify({ message, history, rapport, company, year, sector, role: currentRole(), token: sessionToken() }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -133,3 +148,13 @@ export async function sendChatStream(message, history, { rapport, company, year,
     }
   }
 }
+
+export const signup = (full_name, email, password) =>
+  request("/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ full_name, email, password }) });
+
+export const loginUser = (email, password) =>
+  request("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+
+export const fetchMe = () => request("/auth/me", { headers: bearerHeaders() });
+export const fetchHistory = (limit = 200) => request(`/history?limit=${limit}`, { headers: bearerHeaders() });
+export const deleteHistory = () => request("/history", { method: "DELETE", headers: bearerHeaders() });

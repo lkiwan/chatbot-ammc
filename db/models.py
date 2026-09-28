@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, Enum, Float, ForeignKey,
-    Index, Integer, Numeric, String, Text, UniqueConstraint,
+    BigInteger, Boolean, Date, DateTime, Enum, Float, ForeignKey,
+    Index, Integer, JSON, Numeric, String, Text, UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -449,3 +449,65 @@ class ExtractionError(Base):
         Index("ix_errors_report", "report_id"),
         Index("ix_errors_resolved", "resolved"),
     )
+
+
+# ── Account & message history ────────────────────────────────────────────────
+
+class User(Base):
+    """Registered platform account. Passwords are stored PBKDF2-hashed only."""
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
+    token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    # Daily free-message quota. `quota_date != today` => reset before use.
+    daily_msgs_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    quota_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+        onupdate=func.now(), nullable=False
+    )
+
+    messages: Mapped[list["ChatHistory"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+        Index("ix_users_token", "token"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} email={self.email!r}>"
+
+
+class ChatHistory(Base):
+    """Per-account Q&A history, stored server-side."""
+    __tablename__ = "chat_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    company_name: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    year: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    sources: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_chat_history_user", "user_id", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ChatHistory id={self.id} user_id={self.user_id}>"
