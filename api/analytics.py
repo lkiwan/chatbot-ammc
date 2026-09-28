@@ -795,11 +795,13 @@ def get_usage() -> dict:
         )[:20],
         "top_pdfs_opened": sorted(
             _bucket_counts(data.get("pdf_opens", []), "report").items(),
-            key=lambda kv: -kv[1],
+            key=lambda kv: -kv[1]
         )[:20],
+        # [name, count] pairs, not dicts: the dashboard renders every "top X"
+        # list with the same shape, so mixing the two crashed the render.
         "error_kinds": sorted(
-            ({"name": k, "count": v} for k, v in errors.items()),
-            key=lambda x: -x["count"],
+            ((k, v) for k, v in errors.items()),
+            key=lambda kv: -kv[1]
         )[:20],
     }
 

@@ -38,6 +38,18 @@ function duration(firstSeen, lastSeen) {
   return `${Math.round(ms / 86_400_000)}j`;
 }
 
+/**
+ * Normalises a "top X" list to [name, count] pairs.
+ * The API returns pairs, but tolerating {name, count} objects as well means a
+ * backend/frontend version mismatch degrades to an empty row instead of
+ * throwing "object is not iterable" and blanking the whole dashboard.
+ */
+function toPairs(rows) {
+  return (Array.isArray(rows) ? rows : []).map((r) =>
+    Array.isArray(r) ? r : [r?.name ?? "—", r?.count ?? 0]
+  );
+}
+
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "logins",   label: "Logins" },
@@ -444,24 +456,24 @@ function LocationsCard({ countries = [], cities = [] }) {
 
 function TopListsCard({ usage }) {
   const columns = [
-    { title: "Companies viewed",   rows: usage.top_companies_viewed, color: "var(--adash-teal)" },
-    { title: "PDFs opened",        rows: usage.top_pdfs_opened,      color: "var(--adash-purple)" },
-    { title: "Error kinds",        rows: usage.error_kinds,         color: "var(--adash-rose)" },
+    { title: "Companies viewed", rows: toPairs(usage.top_companies_viewed) },
+    { title: "PDFs opened",      rows: toPairs(usage.top_pdfs_opened) },
+    { title: "Error kinds",      rows: toPairs(usage.error_kinds) },
   ];
-  if (!columns.some((c) => c.rows?.length)) return null;
+  if (!columns.some((c) => c.rows.length)) return null;
 
   return (
     <div className="adash-charts-row">
       {columns.map((col) => {
-        const max = Math.max(...(col.rows || []).map((r) => r[1]), 1);
+        const max = Math.max(...col.rows.map((r) => r[1]), 1);
         return (
           <div key={col.title} className="adash-card">
             <div className="adash-card-header">
               <span className="adash-card-title">{col.title}</span>
             </div>
             <div className="adash-devices">
-              {(col.rows || []).length === 0 && <div className="adash-empty">No data</div>}
-              {(col.rows || []).map(([name, count]) => (
+              {col.rows.length === 0 && <div className="adash-empty">No data</div>}
+              {col.rows.map(([name, count]) => (
                 <div key={name} className="adash-device-row adash-geo-row">
                   <div className="adash-device-label">
                     <span className="adash-list-name" title={name}>{name}</span>
@@ -699,15 +711,16 @@ function ChatTab({ data }) {
 }
 
 function BarListCard({ title, rows = [] }) {
-  const max = Math.max(...rows.map((r) => r[1]), 1);
+  const pairs = toPairs(rows);
+  const max = Math.max(...pairs.map((r) => r[1]), 1);
   return (
     <div className="adash-card">
       <div className="adash-card-header">
         <span className="adash-card-title">{title}</span>
       </div>
       <div className="adash-devices">
-        {rows.length === 0 && <div className="adash-empty">No data</div>}
-        {rows.map(([name, count]) => (
+        {pairs.length === 0 && <div className="adash-empty">No data</div>}
+        {pairs.map(([name, count]) => (
           <div key={name} className="adash-device-row">
             <div className="adash-device-label">
               <span className="adash-list-name" title={name}>{name}</span>
