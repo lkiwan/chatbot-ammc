@@ -26,8 +26,10 @@ function loadSizes() {
 function loadSession() {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  // TEMP: login bypass for local testing — revert to `return null` to restore login page
+  return { role: "admin", email: "admin@annualedge.com" };
 }
 
 export default function App() {
