@@ -3,6 +3,7 @@ import {
   fetchAnalyticsDeep,
   fetchAdminUsers,
   fetchAdminUserHistory,
+  fetchAdminResetPassword,
   trackError,
 } from "../api.js";
 
@@ -415,9 +416,14 @@ function AccountsPage() {
   const [state, setState]     = useState({ data: null, error: null });
   const [loading, setLoading] = useState(true);
   const [query, setQuery]     = useState("");
-  const [expanded, setExpanded] = useState(null);
+  const [modalUser, setModalUser] = useState(null);
   const [history, setHistory] = useState(null);
   const [histLoading, setHistLoading] = useState(false);
+  const [resetFor, setResetFor] = useState(null);
+  const [resetInput, setResetInput] = useState("");
+  const [resetResult, setResetResult] = useState(null);
+  const [resetError, setResetError] = useState(null);
+  const [resetBusy, setResetBusy] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -438,15 +444,45 @@ function AccountsPage() {
     );
   }, [state.data, query]);
 
-  const toggle = (userId) => {
-    if (expanded === userId) { setExpanded(null); setHistory(null); return; }
-    setExpanded(userId);
+  const openUser = (userId) => {
+    setModalUser(userId);
     setHistory(null);
     setHistLoading(true);
     fetchAdminUserHistory(userId)
       .then((h) => setHistory(h))
       .catch(() => setHistory({ messages: [], user: { full_name: "?", email: "erro" } }))
       .finally(() => setHistLoading(false));
+  };
+
+  const openReset = (userId) => {
+    setResetFor(resetFor === userId ? null : userId);
+    setResetInput("");
+    setResetResult(null);
+    setResetError(null);
+  };
+
+  const closeModal = () => {
+    setModalUser(null);
+    setHistory(null);
+    setResetFor(null);
+    setResetInput("");
+    setResetResult(null);
+    setResetError(null);
+  };
+
+  const doReset = (userId) => {
+    if (resetBusy) return;
+    setResetBusy(true);
+    setResetError(null);
+    setResetResult(null);
+    fetchAdminResetPassword(userId, resetInput.trim())
+      .then((r) => {
+        setResetResult(r);
+        setResetInput("");
+        load();
+      })
+      .catch((e) => setResetError(e?.message || "Réinitialisation impossible."))
+      .finally(() => setResetBusy(false));
   };
 
   if (loading) {
@@ -503,6 +539,7 @@ function AccountsPage() {
                   <th className="adash-num">Messages</th>
                   <th>Quota aujourd'hui</th>
                   <th>Dernier message</th>
+                  <th>Mot de passe</th>
                   <th></th>
                 </tr>
               </thead>
@@ -511,7 +548,8 @@ function AccountsPage() {
                   <React.Fragment key={urow.id}>
                     <tr
                       className="adash-clickable"
-                      onClick={() => toggle(urow.id)}
+                      onClick={() => openUser(urow.id)}
+                      title="Voir les questions et réponses"
                     >
                       <td>
                         <div className="adash-account-name">{urow.full_name}</div>
@@ -523,17 +561,19 @@ function AccountsPage() {
                         <QuotaBar used={urow.quota_used_today} total={u.quota_day} left={urow.quota_left_today} />
                       </td>
                       <td className="adash-cell-muted">{formatWhen(urow.last_message_at)}</td>
+                      <td>
+                        <button
+                          className="adash-pwd-btn"
+                          title="Réinitialiser le mot de passe"
+                          onClick={(e) => { e.stopPropagation(); openUser(urow.id); openReset(urow.id); }}
+                        >
+                          Mot de passe
+                        </button>
+                      </td>
                       <td className="adash-cell-muted">
-                        <span className="adash-expand-caret">{expanded === urow.id ? "▾" : "▸"}</span>
+                        <span className="adash-expand-caret">▸</span>
                       </td>
                     </tr>
-                    {expanded === urow.id && (
-                      <tr className="adash-detail-row">
-                        <td colSpan={6}>
-                          <AccountHistory history={history} loading={histLoading} />
-                        </td>
-                      </tr>
-                    )}
                   </React.Fragment>
                 ))}
               </tbody>
@@ -541,6 +581,23 @@ function AccountsPage() {
           </div>
         )}
       </div>
+
+      {modalUser != null && (
+        <UserMessagesModal
+          userId={modalUser}
+          users={u.users || []}
+          history={history}
+          loading={histLoading}
+          onClose={closeModal}
+          resetVisible={resetFor === modalUser}
+          resetInput={resetInput}
+          resetResult={resetResult}
+          resetError={resetError}
+          resetBusy={resetBusy}
+          onResetInput={setResetInput}
+          onResetSubmit={() => doReset(modalUser)}
+        />
+      )}
     </>
   );
 }
@@ -563,27 +620,122 @@ function QuotaBar({ used, total, left }) {
   );
 }
 
-function AccountHistory({ history, loading }) {
-  if (loading) return <div className="adash-empty">Chargement de l'historique…</div>;
-  if (!history) return <div className="adash-empty">Historique indisponible.</div>;
-  if (!history.messages || history.messages.length === 0)
-    return <div className="adash-empty">Aucun message enregistré pour ce compte.</div>;
+function UserMessagesModal({
+  userId, users, history, loading, onClose,
+  resetVisible, resetInput, resetResult, resetError, resetBusy,
+  onResetInput, onResetSubmit,
+}) {
+  const urow = users.find((x) => x.id === userId) || {};
+  const meta = history?.user || {};
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div className="adash-history">
-      {history.messages.map((m, i) => (
-        <div key={i} className="adash-history-item">
-          <div className="adash-history-q">
-            <span className="adash-history-meta">{formatWhen(m.timestamp)}</span>
-            {m.question}
+    <div className="adash-umodal" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="adash-umodal-box">
+        <div className="adash-umodal-head">
+          <img className="adash-umodal-brand" src="/logo.png" alt="AE" />
+          <div className="adash-umodal-meta">
+            <div className="adash-umodal-name">{meta.full_name || urow.full_name || "Compte"}</div>
+            <div className="adash-umodal-sub">
+              {meta.email || urow.email}
+              {(urow.created_at) && <span> · inscrit {formatWhen(urow.created_at)}</span>}
+            </div>
           </div>
-          <div className="adash-history-a">
-            {m.answer || "—"}
-            {m.sources?.length > 0 && (
-              <span className="adash-card-sub"> · {m.sources.length} source(s)</span>
-            )}
-          </div>
+          <button className="adash-umodal-close" onClick={onClose} title="Fermer">✕</button>
         </div>
-      ))}
+
+        {resetVisible && (
+          <div className="adash-umodal-reset">
+            <PasswordResetForm
+              user={{ full_name: meta.full_name || urow.full_name, email: meta.email || urow.email }}
+              value={resetInput}
+              onChange={onResetInput}
+              result={resetResult}
+              error={resetError}
+              busy={resetBusy}
+              onSubmit={onResetSubmit}
+            />
+          </div>
+        )}
+
+        <div className="adash-umodal-body">
+          {loading ? (
+            <div className="adash-empty">Chargement de la conversation…</div>
+          ) : !history || !history.messages || history.messages.length === 0 ? (
+            <div className="adash-empty">Aucun message enregistré pour ce compte.</div>
+          ) : (
+            history.messages.map((m, i) => (
+              <UserMessage key={i} m={m} />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserMessage({ m }) {
+  return (
+    <div className="adash-conv">
+      <div className="adash-conv-time">{formatWhen(m.timestamp)}</div>
+      <div className="adash-conv-row user">
+        <div className="adash-conv-bubble user">{m.question || "—"}</div>
+      </div>
+      <div className="adash-conv-row assistant">
+        <img className="adash-conv-avatar" src="/logo.png" alt="AE" />
+        <div className="adash-conv-assistant">
+          <div className="adash-conv-bubble assistant">
+            {m.answer || "—"}
+          </div>
+          {m.sources?.length > 0 && (
+            <div className="adash-conv-sources">
+              {m.sources.map((s, j) => (
+                <span key={j} className="adash-conv-source">
+                  {s.label || s.url || "source"}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PasswordResetForm({ user, value, onChange, result, error, busy, onSubmit }) {
+  return (
+    <div className="adash-pwd">
+      <div className="adash-pwd-head">Réinitialiser le mot de passe</div>
+      {result ? (
+        <div className="adash-pwd-done">
+          <div className="adash-pwd-done-title">Nouveau mot de passe de {result.full_name} :</div>
+          <div className="adash-pwd-show">
+            <code>{result.new_password}</code>
+            <button className="adash-pwd-copy" onClick={() => navigator.clipboard?.writeText(result.new_password)}>Copier</button>
+          </div>
+          <div className="adash-pwd-note">Transmettez-le à {result.email}. Le mot de passe précédent ne fonctionne plus.</div>
+        </div>
+      ) : (
+        <div className="adash-pwd-form">
+          <input
+            className="adash-search-input adash-pwd-input"
+            type="text"
+            placeholder="Nouveau mot de passe (laisser vide = auto-généré, 8 caractères min.)"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") onSubmit(); }}
+          />
+          <button className="adash-pwd-submit" disabled={busy} onClick={onSubmit}>
+            {busy ? "Réinitialisation…" : "Réinitialiser"}
+          </button>
+          {error && <div className="adash-pwd-error">{error}</div>}
+        </div>
+      )}
     </div>
   );
 }

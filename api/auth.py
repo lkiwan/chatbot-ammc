@@ -341,3 +341,33 @@ def admin_users(db: Session, limit: int = 500) -> dict:
         "quota_day": DAILY_QUOTA,
         "users": out,
     }
+
+
+# 12-char temporary password, no ambiguous chars, at least one digit/letter.
+_TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def generate_temp_password(length: int = 12) -> str:
+    return "".join(secrets.choice(_TEMP_ALPHABET) for _ in range(length))
+
+
+def admin_reset_password(db: Session, user_id: int, new_password: str | None) -> dict | None:
+    """Admin reset of a forgotten password (plaintext is never recoverable).
+
+    The original password is stored only as a one-way hash, so the admin
+    cannot "read" it — they set a fresh password that the returned payload
+    echoes once (auto-generated when `new_password` is empty/None).
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        return None
+    password = generate_temp_password() if not new_password else validate_password(new_password)
+    user.password_hash = hash_password(password)
+    db.flush()
+    return {
+        "ok": True,
+        "user_id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "new_password": password,
+    }

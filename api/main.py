@@ -452,6 +452,24 @@ def admin_user_history(user_id: int, request: Request, limit: int = Query(100, g
     return result
 
 
+class AdminResetPasswordBody(BaseModel):
+    password: Optional[str] = None
+
+
+@app.post("/api/admin/users/{user_id}/reset-password")
+def admin_reset_password(user_id: int, body: Optional[AdminResetPasswordBody] = None):
+    if not _DB_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Base de données indisponible.")
+    try:
+        with get_db() as db:
+            result = auth.admin_reset_password(db, user_id, body.password if body else None)
+    except auth.AuthError as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Compte introuvable.")
+    return result
+
+
 def _read_csv(name: str) -> list[dict]:
     path = RAW_DIR / name / f"{name}.csv"
     if not path.exists():
