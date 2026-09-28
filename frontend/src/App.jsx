@@ -28,8 +28,6 @@ function loadSession() {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  // TEMP: login bypass for local testing — revert to `return null` to restore login page
-  return { role: "admin", email: "admin@annualedge.com" };
 }
 
 export default function App() {
