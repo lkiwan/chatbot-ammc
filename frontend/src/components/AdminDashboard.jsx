@@ -684,18 +684,12 @@ function SecurityPage({ data }) {
         <LogTable rows={log} />
       </div>
 
-      {(logins.signups ?? 0) > 0 && <SignupStats signups={data.summary.signups_data || data.timeline} />}
-
       <AbuseInsight
         exhausted={data.summary.total_demo_exhausted ?? 0}
         logins={data.summary.total_demo_logins}
       />
     </>
   );
-}
-
-function SignupStats({ signups }) {
-  return null;
 }
 
 function LogTable({ rows }) {
