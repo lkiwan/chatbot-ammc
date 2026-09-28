@@ -85,6 +85,51 @@ def hash_password(password: str) -> str:
     return f"{salt.hex()}${digest.hex()}"
 
 
+# ── Recoverable storage (admin can read a forgotten password) ───────────────
+# The login check keeps using the one-way `password_hash` above. `password_cipher`
+# is a reversible copy encrypted with a server-side key so the admin dashboard
+# can display the current password. It degrades gracefully to "unreadable" when
+# the key is missing or the library is not installed.
+_CIPHER_PREFIX = "v1:"
+
+
+def _cipher() -> "Fernet | None":
+    try:
+        from cryptography.fernet import Fernet
+        secret = os.environ.get("PASSWORD_SECRET") or os.environ.get("API_TOKEN")
+        if not secret:
+            return None
+        import base64
+        key = base64.urlsafe_b64encode(
+            hashlib.sha256(secret.encode("utf-8")).digest()
+        )
+        return Fernet(key)
+    except Exception:
+        return None
+
+
+def encrypt_password(password: str) -> str | None:
+    fernet = _cipher()
+    if fernet is None:
+        return None
+    return _CIPHER_PREFIX + fernet.encrypt(password.encode("utf-8")).decode("ascii")
+
+
+def decrypt_password(stored: str | None) -> str | None:
+    if not stored or not stored.startswith(_CIPHER_PREFIX):
+        return None
+    fernet = _cipher()
+    if fernet is None:
+        return None
+    try:
+        from cryptography.fernet import InvalidToken
+        return fernet.decrypt(stored[len(_CIPHER_PREFIX):].encode("ascii")).decode("utf-8")
+    except InvalidToken:
+        return None
+    except Exception:
+        return None
+
+
 def verify_password(password: str, stored: str) -> bool:
     try:
         salt_hex, digest_hex = stored.split("$", 1)
@@ -214,6 +259,7 @@ def signup(db: Session, full_name: str, email: str, password: str) -> User:
         full_name=name,
         email=email.lower(),
         password_hash=hash_password(password),
+        password_cipher=encrypt_password(password),
         token=_new_token(),
         daily_msgs_used=0,
         quota_date=_today(),
@@ -335,6 +381,8 @@ def admin_users(db: Session, limit: int = 500) -> dict:
             "quota_used_today": used_today,
             "quota_left_today": max(0, DAILY_QUOTA - used_today),
             "quota_day": DAILY_QUOTA,
+            "password": decrypt_password(u.password_cipher),
+            "password_recoverable": bool(u.password_cipher),
         })
     return {
         "total": len(out),
@@ -363,6 +411,7 @@ def admin_reset_password(db: Session, user_id: int, new_password: str | None) ->
         return None
     password = generate_temp_password() if not new_password else validate_password(new_password)
     user.password_hash = hash_password(password)
+    user.password_cipher = encrypt_password(password)
     db.flush()
     return {
         "ok": True,

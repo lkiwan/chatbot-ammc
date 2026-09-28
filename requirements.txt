@@ -5,3 +5,4 @@ chromadb==1.5.9
 python-dotenv
 fastapi
 uvicorn[standard]
+cryptography

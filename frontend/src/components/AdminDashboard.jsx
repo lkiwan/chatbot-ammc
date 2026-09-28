@@ -491,7 +491,12 @@ function AccountsPage() {
     setResetError(null);
     setResetResult(null);
     fetchAdminResetPassword(userId, resetInput.trim())
-      .then((r) => { setResetResult(r); setResetInput(""); })
+      .then((r) => {
+        setResetResult(r);
+        setResetInput("");
+        setModal((prev) => prev && { ...prev, row: { ...prev.row, password: r.new_password, password_recoverable: true } });
+        load();
+      })
       .catch((e) => setResetError(e?.message || "Réinitialisation impossible."))
       .finally(() => setResetBusy(false));
   };
@@ -583,12 +588,23 @@ function AccountsPage() {
                       </td>
                       <td className="adash-cell-muted">{formatWhen(urow.last_message_at)}</td>
                       <td>
+                        {urow.password_recoverable && urow.password ? (
+                          <div className="adash-pwd-current">
+                            <code>{urow.password}</code>
+                            <button
+                              className="adash-pwd-copy"
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(urow.password); }}
+                            >Copier</button>
+                          </div>
+                        ) : (
+                          <span className="adash-pwd-current adash-pwd-current-na">—</span>
+                        )}
                         <button
                           className="adash-pwd-btn"
                           title="Réinitialiser le mot de passe"
                           onClick={(e) => { e.stopPropagation(); openUser(urow); openReset(urow.id); }}
                         >
-                          Mot de passe
+                          Réinitialiser
                         </button>
                       </td>
                       <td className="adash-cell-muted">
@@ -727,6 +743,7 @@ function UserMessagesModal({
           <div className="adash-umodal-reset">
             <PasswordResetForm
               user={{ full_name: fullName, email }}
+              current={row?.password}
               value={resetInput}
               onChange={onResetInput}
               result={resetResult}
@@ -785,10 +802,22 @@ function UserMessage({ m, anon }) {
   );
 }
 
-function PasswordResetForm({ user, value, onChange, result, error, busy, onSubmit }) {
+function PasswordResetForm({ user, value, onChange, result, error, busy, onSubmit, current }) {
   return (
     <div className="adash-pwd">
-      <div className="adash-pwd-head">Réinitialiser le mot de passe</div>
+      <div className="adash-pwd-head">Mot de passe</div>
+      {user?.full_name && current != null && (
+        <div className="adash-pwd-show">
+          <span className="adash-pwd-done-title">Mot de passe actuel :</span>
+          <code>{current}</code>
+          <button className="adash-pwd-copy" onClick={() => navigator.clipboard?.writeText(current)}>Copier</button>
+        </div>
+      )}
+      {user?.full_name && current == null && (
+        <div className="adash-pwd-note">
+          Mot de passe actuel : — (compte créé avant la récupération, non récupérable → réinitialisez-le).
+        </div>
+      )}
       {result ? (
         <div className="adash-pwd-done">
           <div className="adash-pwd-done-title">Nouveau mot de passe de {result.full_name} :</div>

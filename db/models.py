@@ -454,13 +454,19 @@ class ExtractionError(Base):
 # ── Account & message history ────────────────────────────────────────────────
 
 class User(Base):
-    """Registered platform account. Passwords are stored PBKDF2-hashed only."""
+    """Registered platform account. Passwords are stored PBKDF2-hashed.
+
+    `password_hash` is the one-way hash used for login checks; `password_cipher`
+    holds the same password encrypted with the server secret so an admin can
+    recover it (recoverable storage, chosen for admin convenience).
+    """
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
+    password_cipher: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
     # Daily free-message quota. `quota_date != today` => reset before use.

@@ -2093,6 +2093,21 @@ input, textarea { font-family: var(--sans); }
 .adash-pwd-copy:hover { border-color: var(--adash-teal); color: var(--adash-teal); }
 .adash-pwd-note { font-size: 11px; color: var(--adash-muted); }
 
+.adash-pwd-current {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 6px;
+}
+.adash-pwd-current code {
+  font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  color: var(--adash-teal);
+  padding: 3px 8px; border-radius: 5px;
+  background: rgba(20,184,166,.08);
+  border: 1px dashed rgba(20,184,166,.35);
+  word-break: break-all;
+}
+.adash-pwd-current .adash-pwd-copy { padding: 3px 8px; font-size: 10.5px; }
+.adash-pwd-current-na { margin-bottom: 6px; color: var(--adash-muted); font-size: 12px; }
+
 /* ── Boîte conversation utilisateur (Comptes) ── */
 .adash-umodal {
   position: fixed; inset: 0;
