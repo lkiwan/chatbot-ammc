@@ -1655,6 +1655,11 @@ input, textarea { font-family: var(--sans); }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px; color: var(--adash-teal);
 }
+.adash-pwd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; color: var(--adash-amber);
+  font-weight: 600;
+}
 .adash-num { text-align: right; font-variant-numeric: tabular-nums; }
 .adash-num-hot { color: var(--adash-rose); font-weight: 700; }
 .adash-chip {

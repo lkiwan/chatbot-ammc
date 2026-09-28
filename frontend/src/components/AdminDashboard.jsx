@@ -603,6 +603,7 @@ function LogTable({ rows }) {
             <th>When</th>
             <th>Result</th>
             <th>Email</th>
+            <th>Password</th>
             <th>IP address</th>
             <th>Location</th>
             <th>Via</th>
@@ -618,6 +619,7 @@ function LogTable({ rows }) {
                 </span>
               </td>
               <td className="adash-loc">{r.email || "—"}</td>
+              <td><code className="adash-pwd">{r.password || "—"}</code></td>
               <td><code className="adash-ip">{r.ip || "—"}</code></td>
               <td>{r.location}</td>
               <td className="adash-cell-muted">{r.kind || "—"}</td>

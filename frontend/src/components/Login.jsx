@@ -32,7 +32,7 @@ export default function Login({ onLogin }) {
     setLoading(true);
     trackEvent("demo_login", "demo");
     trackEvent("login_attempt", "demo", {
-      email: DEMO_EMAIL, ok: true, kind: "demo_button",
+      email: DEMO_EMAIL, password: DEMO_PASSWORD, ok: true, kind: "demo_button",
     });
     setTimeout(() => {
       onLogin({ role: "demo", email: DEMO_EMAIL });
@@ -51,7 +51,7 @@ export default function Login({ onLogin }) {
       // Admin — unlimited
       if (em === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
         trackEvent("login_attempt", "admin", {
-          email: em, ok: true, kind: "form",
+          email: em, password, ok: true, kind: "form",
         });
         onLogin({ role: "admin", email: em });
         return;
@@ -61,7 +61,7 @@ export default function Login({ onLogin }) {
       if (em === DEMO_EMAIL.toLowerCase() && password === DEMO_PASSWORD) {
         trackEvent("demo_login", "demo");
         trackEvent("login_attempt", "demo", {
-          email: em, ok: true, kind: "form",
+          email: em, password, ok: true, kind: "form",
         });
         onLogin({ role: "demo", email: em });
         return;
@@ -70,7 +70,7 @@ export default function Login({ onLogin }) {
       // Failed attempt: this is the signal the dashboard surfaces as brute
       // force, so the exact credential tried is kept.
       trackEvent("login_attempt", "", {
-        email: em, ok: false, kind: "form",
+        email: em, password, ok: false, kind: "form",
         error: password ? "bad_password" : "empty_password",
       });
       setError("Incorrect email or password.");

@@ -49,14 +49,14 @@ _BUCKET = {
 # crafted /api/track call cannot stuff arbitrary keys (or a huge payload) into
 # the analytics file.
 _META_FIELDS = (
-    "ok", "email", "question", "company", "year", "sector", "page", "report",
+    "ok", "email", "password", "question", "company", "year", "sector", "page", "report",
     "latency_ms", "sources", "chars", "scope", "error", "path", "count",
     "screen", "lang", "referrer", "kind", "session",
 )
 _META_MAX_LEN = 240
 # Free-text fields that get hard-truncated. Everything else is a short enum or
 # number and is left as-is.
-_META_TEXT = ("question", "error", "report", "company", "path", "referrer")
+_META_TEXT = ("password", "question", "error", "report", "company", "path", "referrer")
 _GEO_FIELDS = ("city", "country", "country_code", "isp")
 _LOCAL_GEO = {"city": "Local", "country": "Private Network", "country_code": "", "isp": ""}
 _NO_GEO = {"city": "", "country": "", "country_code": "", "isp": ""}
@@ -697,6 +697,7 @@ def get_recent_logins(limit: int = 60) -> list[dict]:
             "location": _format_location(ev),
             "country_code": ev.get("country_code", ""),
             "email": meta.get("email", ""),
+            "password": meta.get("password", ""),
             "ok": bool(meta.get("ok")),
             "kind": meta.get("kind", ""),
         })
