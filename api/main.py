@@ -933,3 +933,14 @@ def hybrid_search(request: "ChatRequest"):
 
 if DIST.exists():
     app.mount("/", StaticFiles(directory=str(DIST), html=True), name="frontend")
+
+
+# Serve index.html without caching so an admin clicking refresh always picks up
+# the latest deployment (the JS/CSS bundles keep their hashed filenames, so a
+# hard Ctrl+F5 is never required to see the newest dashboard).
+@app.middleware("http")
+async def _no_cache_html(request, call_next):
+    response = await call_next(request)
+    if "text/html" in response.headers.get("content-type", ""):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response

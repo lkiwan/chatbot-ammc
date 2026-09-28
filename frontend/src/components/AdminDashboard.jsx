@@ -135,7 +135,7 @@ export default function AdminDashboard({ onClose }) {
             <span className="adash-updated">
               Actualisé {lastUpdated ? lastUpdated.toLocaleTimeString("fr") : "…"}
             </span>
-            <button className="adash-refresh" onClick={load} title="Actualiser">
+            <button className="adash-refresh" onClick={() => window.location.reload()} title="Actualiser (recharge la page)">
               <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
                 <path d="M13.5 2.5A6.5 6.5 0 0 0 2 8M2.5 13.5A6.5 6.5 0 0 0 14 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
                 <path d="M13.5 2.5v3h-3M2.5 13.5v-3h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
