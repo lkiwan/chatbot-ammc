@@ -1,0 +1,35 @@
+Traceback (most recent call last):
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\main.py", line 105, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\main.py", line 33, in main
+    build_index(force=args.force)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\build_index.py", line 189, in build_index
+    collection.upsert(
+    ~~~~~~~~~~~~~~~~~^
+        ids=ids[i : i + 64], documents=docs[i : i + 64], metadatas=metas[i : i + 64]
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\chromadb\api\models\Collection.py", line 530, in upsert
+    self._client._upsert(
+    ~~~~~~~~~~~~~~~~~~~~^
+        collection_id=self.id,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        database=self.database,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\chromadb\api\rust.py", line 541, in _upsert
+    return self.bindings.upsert(
+           ~~~~~~~~~~~~~~~~~~~~^
+        str(collection_id),
+        ^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        database,
+        ^^^^^^^^^
+    )
+    ^
+chromadb.errors.InternalError: Error in compaction: Error constructing hnsw segment reader: Error creating hnsw segment reader: Error loading hnsw index

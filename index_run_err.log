@@ -1,0 +1,53 @@
+Traceback (most recent call last):
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\pdfdocument.py", line 713, in __init__
+    pos = self.find_xref(parser)
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\pdfdocument.py", line 974, in find_xref
+    raise PDFNoValidXRef("Unexpected EOF")
+pdfminer.pdfdocument.PDFNoValidXRef: Unexpected EOF
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfplumber\pdf.py", line 50, in __init__
+    self.doc = PDFDocument(PDFParser(stream), password=password or "")
+               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\pdfdocument.py", line 719, in __init__
+    newxref.load(parser)
+    ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\pdfdocument.py", line 231, in load
+    (_, obj) = parser.nextobject()
+               ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\psparser.py", line 596, in nextobject
+    (pos, token) = self.nexttoken()
+                   ~~~~~~~~~~~~~~^^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\psparser.py", line 502, in nexttoken
+    changed_stream = self.fillbuf()
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfminer\psparser.py", line 213, in fillbuf
+    raise PSEOF("Unexpected EOF")
+pdfminer.psexceptions.PSEOF: Unexpected EOF
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\main.py", line 105, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\main.py", line 33, in main
+    build_index(force=args.force)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\build_index.py", line 151, in build_index
+    info = ensure_chunks(pdf, force, stem=stem)
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\build_index.py", line 119, in ensure_chunks
+    return extract(pdf, stem=stem)
+  File "C:\Users\arhou\OneDrive\Bureau\projet omar\colab\chatbot-ammc\extract.py", line 93, in extract
+    with pdfplumber.open(pdf) as p:
+         ~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfplumber\pdf.py", line 107, in open
+    return cls(
+        stream,
+    ...<7 lines>...
+        raise_unicode_errors=raise_unicode_errors,
+    )
+  File "C:\Users\arhou\AppData\Local\Programs\Python\Python313\Lib\site-packages\pdfplumber\pdf.py", line 52, in __init__
+    raise PdfminerException(e)
+pdfplumber.utils.exceptions.PdfminerException: Unexpected EOF

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { LOGO_URLS, TICKERS, isListed } from "../data/logos";
 
 function initials(name) {
   return name
@@ -7,6 +8,33 @@ function initials(name) {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+// Casabourse logo when we have a verified one, otherwise the initials avatar.
+// Falls back to initials if the remote image fails to load.
+function CompanyAvatar({ company, keyName, color }) {
+  const [failed, setFailed] = useState(false);
+  const src = LOGO_URLS[keyName];
+
+  if (!src || failed) {
+    return (
+      <span className="company-avatar" style={{ background: color + "20", color }}>
+        {initials(company)}
+      </span>
+    );
+  }
+  return (
+    <span className="company-avatar company-avatar-logo">
+      <img
+        src={src}
+        alt={company}
+        loading="lazy"
+        decoding="async"
+        title={TICKERS[keyName] ? `${company} (${TICKERS[keyName]})` : company}
+        onError={() => setFailed(true)}
+      />
+    </span>
+  );
 }
 
 const SECTOR_MAP = {
@@ -43,36 +71,55 @@ function sectorLabel(sector) {
 export default function Sidebar({ companies, active, onSelect, onYearSelect, activeYear }) {
   const [search, setSearch]             = useState("");
   const [activeSector, setActiveSector] = useState("Tous");
+  const [listing, setListing]           = useState("all"); // "all" | "bourse" | "hors"
   const [showSectors, setShowSectors]   = useState(true);
   const [showCompanies, setShowCompanies] = useState(true);
+
+  const LISTING_CHIPS = [
+    { id: "bourse", label: "En bourse" },
+    { id: "hors",   label: "Hors bourse" },
+  ];
+
+  const matchesListing = useMemo(() => {
+    if (listing === "bourse") return isListed;
+    if (listing === "hors")   return (k) => !isListed(k);
+    return () => true;
+  }, [listing]);
+
+  const listingCounts = useMemo(() => ({
+    all:    companies.length,
+    bourse: companies.filter((c) =>  isListed(c.company_normalized)).length,
+    hors:   companies.filter((c) => !isListed(c.company_normalized)).length,
+  }), [companies]);
 
   const sectors = useMemo(() => {
     const set = new Set(companies.map((c) => c.sector || "Autre").filter(Boolean));
     return ["Tous", ...Array.from(set).sort((a, b) => a.localeCompare(b, "fr"))];
   }, [companies]);
 
-  // Count per sector (unaffected by search so counts stay stable)
+// Count per sector (respects the bourse filter so counts stay meaningful)
   const sectorCounts = useMemo(() => {
-    const counts = { Tous: companies.length };
-    for (const c of companies) {
+    const base = listing === "all" ? companies : companies.filter(matchesListing);
+    const counts = { Tous: base.length };
+    for (const c of base) {
       const s = c.sector || "Autre";
       counts[s] = (counts[s] || 0) + 1;
     }
     return counts;
-  }, [companies]);
+  }, [companies, listing, matchesListing]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return companies.filter((c) => {
       const matchSector = activeSector === "Tous" || (c.sector || "Autre") === activeSector;
       const matchSearch = !q || c.company.toLowerCase().includes(q);
-      return matchSector && matchSearch;
+      return matchesListing(c.company_normalized) && matchSector && matchSearch;
     });
-  }, [companies, search, activeSector]);
+  }, [companies, search, activeSector, matchesListing]);
 
-  // Group by sector when showing all with no search
+  // Group by sector when showing everything with no search
   const grouped = useMemo(() => {
-    const useGroups = activeSector === "Tous" && !search.trim();
+    const useGroups = activeSector === "Tous" && !search.trim() && listing === "all";
     if (!useGroups) return [{ sector: null, items: filtered }];
     const map = new Map();
     for (const c of filtered) {
@@ -83,7 +130,7 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b, "fr"))
       .map(([sector, items]) => ({ sector, items }));
-  }, [filtered, activeSector, search]);
+  }, [filtered, activeSector, search, listing]);
 
   const activeCompany = companies.find((c) => c.company_normalized === active);
 
@@ -149,9 +196,12 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
             onClick={() => setShowSectors((v) => !v)}
             aria-expanded={showSectors}
           >
-            <span className="sector-filter-label">Secteur</span>
-            {activeSector !== "Tous" && (
-              <span className="sector-filter-active-dot" style={{ background: sectorColor(activeSector) }} />
+            <span className="sector-filter-label">Filtres</span>
+            {(activeSector !== "Tous" || listing !== "all") && (
+              <span
+                className="sector-filter-active-dot"
+                style={{ background: activeSector !== "Tous" ? sectorColor(activeSector) : (listing === "bourse" ? "#2563eb" : "#64748b") }}
+              />
             )}
             <svg
               viewBox="0 0 12 12" fill="none" width="10" height="10"
@@ -160,10 +210,10 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
               <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          {activeSector !== "Tous" && showSectors && (
+          {(activeSector !== "Tous" || listing !== "all") && showSectors && (
             <button
               className="sector-filter-reset"
-              onClick={() => setActiveSector("Tous")}
+              onClick={() => { setActiveSector("Tous"); setListing("all"); }}
             >
               Réinitialiser
             </button>
@@ -172,8 +222,33 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
 
         {showSectors && (
           <div className="sector-chips">
-            {sectors.map((s) => {
-              const color    = s !== "Tous" ? sectorColor(s) : null;
+            {/* ── Tous ── */}
+            <button
+              className={`sector-chip ${listing === "all" && activeSector === "Tous" ? "active" : ""}`}
+              onClick={() => { setListing("all"); setActiveSector("Tous"); }}
+            >
+              <span className="sector-chip-name">Tous</span>
+              <span className="sector-chip-count">{listingCounts.all}</span>
+            </button>
+
+            {/* ── Bourse / Hors bourse ── */}
+            {LISTING_CHIPS.map(({ id, label }) => (
+              <button
+                key={id}
+                className={`sector-chip sector-chip-listing ${listing === id ? "active" : ""}`}
+                onClick={() => setListing(listing === id ? "all" : id)}
+                style={listing === id ? { "--chip-color": id === "bourse" ? "#2563eb" : "#64748b" } : undefined}
+              >
+                <span className="sector-chip-name">{label}</span>
+                <span className="sector-chip-count">{listingCounts[id]}</span>
+              </button>
+            ))}
+
+            <span className="sector-chips-sep" aria-hidden="true" />
+
+            {/* ── Sectors ── */}
+            {sectors.filter((s) => s !== "Tous").map((s) => {
+              const color    = sectorColor(s);
               const count    = sectorCounts[s] || 0;
               const isActive = activeSector === s;
               return (
@@ -183,13 +258,9 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
                   onClick={() => setActiveSector(s)}
                   style={color ? { "--chip-color": color } : undefined}
                 >
-                  {color && (
-                    <span className="sector-chip-dot" style={{ background: color }} />
-                  )}
+                  <span className="sector-chip-dot" style={{ background: color }} />
                   <span className="sector-chip-name">{sectorLabel(s)}</span>
-                  {s !== "Tous" && (
-                    <span className="sector-chip-count">{count}</span>
-                  )}
+                  <span className="sector-chip-count">{count}</span>
                 </button>
               );
             })}
@@ -235,9 +306,11 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
                     className="company-btn"
                     onClick={() => onSelect(c.company_normalized)}
                   >
-                    <span className="company-avatar" style={{ background: color + "20", color }}>
-                      {initials(c.company)}
-                    </span>
+                    <CompanyAvatar
+                      company={c.company}
+                      keyName={c.company_normalized}
+                      color={color}
+                    />
                     <span className="company-info">
                       <span className="company-name">{c.company}</span>
                       {/* Show sector only when not grouped (search or single-sector filter) */}

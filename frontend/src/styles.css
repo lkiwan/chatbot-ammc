@@ -301,10 +301,38 @@ input, textarea { font-family: var(--sans); }
 }
 .sector-filter-reset:hover { opacity: 1; }
 
-/* Chips grid */
+/* Chips grid — scrollable, shows 4.5 rows so the half row hints at more */
 .sector-chips {
-  display: flex; flex-wrap: wrap; gap: 5px;
+  --chip-h: 26.3px;
+  --chip-gap: 5px;
+  display: flex; flex-wrap: wrap; gap: var(--chip-gap);
   margin-top: 8px;
+  max-height: calc(var(--chip-h) * 4 + var(--chip-gap) + var(--chip-h) / 2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+  padding-right: 6px;
+}
+/* Slim scrollbar matching the dark sidebar */
+.sector-chips::-webkit-scrollbar { width: 4px; }
+.sector-chips::-webkit-scrollbar-track { background: transparent; }
+.sector-chips::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.18);
+  border-radius: 2px;
+}
+.sector-chips::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.3); }
+/* Divider between the Tous / Bourse row and the sector chips */
+.sector-chips-sep {
+  flex-basis: 100%;
+  height: 1px;
+  margin: 3px 0 1px;
+  background: var(--sidebar-line);
+}
+/* "En bourse" / "Hors bourse" read as primary filters, not sectors */
+.sector-chip-listing {
+  border-color: rgba(255,255,255,.12);
+  color: var(--sidebar-text);
 }
 .sector-chip {
   display: inline-flex; align-items: center; gap: 5px;
@@ -410,6 +438,19 @@ input, textarea { font-family: var(--sans); }
   display: flex; align-items: center; justify-content: center;
   font-size: 10.5px; font-weight: 700; flex-shrink: 0;
   letter-spacing: .02em; transition: transform .18s;
+  overflow: hidden;
+}
+/* Casabourse logo: light plate so dark-on-white marks stay readable
+   against the deep-navy sidebar, padded so non-square marks breathe. */
+.company-avatar-logo {
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+}
+.company-avatar-logo img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
 }
 .company-info { flex: 1; min-width: 0; }
 .company-name {

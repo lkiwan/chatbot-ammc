@@ -4,9 +4,9 @@ from pathlib import Path
 
 import chromadb
 
-from config import (CHROMA_DIR, CHUNKS_DIR, GLOBAL_COLLECTION, PDFS_DIR,
-                    RAW_DIR, REPORTS_JSON, SCRAPER_MANIFEST, SCRAPER_META_JSON,
-                    SCRAPER_REPORTS_DIR)
+from config import (CHROMA_DIR, CHUNKS_DIR, GLOBAL_COLLECTION, INDEX_ERRORS_JSON,
+                    PDFS_DIR, RAW_DIR, REPORTS_JSON, SCRAPER_MANIFEST,
+                    SCRAPER_META_JSON, SCRAPER_REPORTS_DIR)
 from extract import extract, sanitize_stem
 
 
@@ -36,10 +36,38 @@ def save_scraper_meta(meta: dict[str, dict]) -> None:
     )
 
 
+def load_errors() -> list[dict]:
+    if INDEX_ERRORS_JSON.exists():
+        return json.loads(INDEX_ERRORS_JSON.read_text(encoding="utf-8"))
+    return []
+
+
+def save_errors(errors: list[dict]) -> None:
+    INDEX_ERRORS_JSON.parent.mkdir(parents=True, exist_ok=True)
+    INDEX_ERRORS_JSON.write_text(
+        json.dumps(errors, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+
+
 def find_pdfs() -> list[Path]:
     if not PDFS_DIR.is_dir():
         return []
     return sorted(PDFS_DIR.glob("*.pdf"))
+
+
+def company_dir_from_row(row: dict) -> str:
+    """Recover the on-disk company folder name from the manifest row.
+
+    iter_reports() keys every report by the folder name under
+    SCRAPER_REPORTS_DIR, so scraper_meta() must key on the same string or the
+    two stem sets drift apart and /api/companies silently drops reports.
+    local_path is {root}/{sector}/{company}/{year}/annual_report.pdf.
+    """
+    local_path = (row.get("local_path") or "").strip().replace("/", "\\")
+    parts = [p for p in local_path.split("\\") if p]
+    if len(parts) >= 4 and parts[-1].lower().endswith(".pdf"):
+        return parts[-3]
+    return ""
 
 
 def scraper_meta() -> dict[str, dict]:
@@ -53,9 +81,12 @@ def scraper_meta() -> dict[str, dict]:
             if status not in ("downloaded", "skipped"):
                 continue
             company_raw = (row.get("company_name") or "").strip()
-            company_norm = sanitize_stem(
-                (row.get("company_name_normalized") or "").strip() or company_raw
-            )
+            company_dir = company_dir_from_row(row)
+            company_norm = sanitize_stem(company_dir) if company_dir else ""
+            if not company_norm:
+                company_norm = sanitize_stem(
+                    (row.get("company_name_normalized") or "").strip() or company_raw
+                )
             year = (row.get("year") or "").strip()
             if not company_norm or not year:
                 continue
@@ -145,11 +176,18 @@ def build_index(force: bool = False) -> int:
             continue
         sources.append((stem, pdf, scraper_meta().get(stem, {})))
 
+    errors: list[dict] = []
+
     for stem, pdf, meta in sources:
         if stem in known and not force:
             continue
-        info = ensure_chunks(pdf, force, stem=stem)
-        chunks = json.loads((CHUNKS_DIR / f"{stem}.json").read_text(encoding="utf-8"))
+        try:
+            info = ensure_chunks(pdf, force, stem=stem)
+            chunks = json.loads((CHUNKS_DIR / f"{stem}.json").read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append({"stem": stem, "pdf": str(pdf), "error": f"{type(exc).__name__}: {exc}"})
+            print(f"ECHEC  : {stem} ({type(exc).__name__}: {exc})")
+            continue
 
         ids = [f"{stem}::{c['id']}" for c in chunks]
         docs = [c["text"] for c in chunks]
@@ -179,11 +217,16 @@ def build_index(force: bool = False) -> int:
             save_registry(reg)
 
     save_registry(reg)
+    save_errors(errors)
     save_scraper_meta(scraper_meta())
     if added == 0:
         print(f"Rien a reindexer ({collection.count()} chunks au total).")
     else:
         print(f"Index global : {collection.count()} chunks -> {CHROMA_DIR}")
+    if errors:
+        print(f"{len(errors)} rapport(s) en echec -> {INDEX_ERRORS_JSON}")
+        for e in errors:
+            print(f"  - {e['stem']}: {e['error']}")
     return added
 
 
