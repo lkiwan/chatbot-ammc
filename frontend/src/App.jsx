@@ -57,16 +57,26 @@ export default function App() {
   const [activeSource, setActiveSource]   = useState(null);
   const [sizes, setSizes]         = useState(loadSizes);
 
-  // Touch-only: swipe in from the left edge opens the menu, from the right
-  // edge opens the PDF viewer. Progress drives the panel transform so the
-  // drawer tracks the finger instead of snapping open at the end.
+  // Touch-only: swipe in from the left edge toggles the menu, from the right
+  // edge toggles the PDF viewer. Swiping back the other way closes an open
+  // panel. Progress is "openness" 0 -> 1 so the panels track the finger in
+  // both directions instead of snapping.
   const swipe = useEdgeSwipe({
-    enabled: isMobile && !adminView && !!auth && sidebarOpen !== true,
+    enabled: isMobile && !adminView && !!auth,
+    startOpen: sidebarOpen,
+    endOpen: pdfOpen,
     width: isMobile ? window.innerWidth * 0.82 : 0,
-    onOpenStart: () => setSidebarOpen(true),
-    onOpenEnd: () => setPdfOpen(true),
+    onToggleStart: () => setSidebarOpen((v) => !v),
+    onToggleEnd: () => setPdfOpen((v) => !v),
   });
   const swipeProgress = swipe.progress;
+
+  // "Openness" for each panel: the live drag while a swipe is in flight,
+  // otherwise the committed open/closed state.
+  const menuOpenness =
+    swipe.edge === "start" ? swipeProgress : sidebarOpen ? 1 : 0;
+  const pdfOpenness =
+    swipe.edge === "end" ? swipeProgress : pdfOpen ? 1 : 0;
 
   useEffect(() => {
     if (!auth) return;
@@ -151,11 +161,11 @@ export default function App() {
   return (
     <div className="app" {...swipe.bind}>
       {/* Edge affordances: hint where an edge swipe is armed */}
-      {isMobile && !sidebarOpen && (
-        <>
-          <span className="edge-hint edge-hint-left" aria-hidden="true" />
-          <span className="edge-hint edge-hint-right" aria-hidden="true" />
-        </>
+      {isMobile && !sidebarOpen && !pdfOpen && (
+        <span className="edge-hint edge-hint-left" aria-hidden="true" />
+      )}
+      {isMobile && !pdfOpen && (
+        <span className="edge-hint edge-hint-right" aria-hidden="true" />
       )}
 
       {/* ── Topbar ── */}
@@ -255,28 +265,25 @@ export default function App() {
         )}
 
         {/* ── Mobile menu (drawer) ── */}
-        {(isMobile && (sidebarOpen || (swipe.edge === "start" && swipeProgress > 0))) && (
+        {/* While a swipe is in flight the drag owns the transform; otherwise fall
+            back to the committed state so the panel is never stranded. */}
+        {isMobile && (sidebarOpen || (swipe.edge === "start" && swipeProgress > 0)) && (
           <div
             className="mobile-nav"
             role="dialog"
             aria-modal="true"
-            style={{
-              // follow the finger; once committed, sidebarOpen renders it fully open
-              opacity: sidebarOpen ? 1 : swipeProgress,
-            }}
+            style={{ opacity: menuOpenness, pointerEvents: menuOpenness > 0.6 ? "auto" : "none" }}
           >
             <div
               className="mobile-nav-scrim"
-              style={{ opacity: sidebarOpen ? 1 : swipeProgress }}
+              style={{ opacity: menuOpenness }}
               onClick={() => setSidebarOpen(false)}
             />
             <div
               className="mobile-nav-panel"
               style={{
-                transform: sidebarOpen
-                  ? "translateX(0)"
-                  : `translateX(${(1 - swipeProgress) * -100}%)`,
-                transition: swipe.edge ? "none" : "transform .25s cubic-bezier(.22,1,.36,1)",
+                transform: `translateX(${(1 - menuOpenness) * -100}%)`,
+                transition: swipe.edge === "start" ? "none" : "transform .25s cubic-bezier(.22,1,.36,1)",
               }}
             >
               <div className="mobile-nav-head">
@@ -312,7 +319,7 @@ export default function App() {
             onTogglePdf={() => setPdfOpen((v) => !v)}
           />
 
-          {(pdfOpen || (isMobile && swipe.edge === "end" && swipeProgress > 0)) && (
+          {(!isMobile || pdfOpen || (swipe.edge === "end" && swipeProgress > 0)) && (
             <>
               <Splitter
                 orientation="vertical"
@@ -324,9 +331,12 @@ export default function App() {
                 className="pdf-right-wrap"
                 style={{
                   width: isMobile ? "100%" : sizes.pdf,
-                  // slide in from the right as the finger drags left
-                  transform: pdfOpen ? "translateX(0)" : `translateX(${(1 - swipeProgress) * 100}%)`,
-                  transition: swipe.edge ? "none" : "transform .25s cubic-bezier(.22,1,.36,1)",
+                  // slide in from the right as the finger drags left, and back
+                  // out again when the same edge is swiped to dismiss
+                  transform:
+                    isMobile ? `translateX(${(1 - pdfOpenness) * 100}%)` : undefined,
+                  transition:
+                    swipe.edge === "end" ? "none" : "transform .25s cubic-bezier(.22,1,.36,1)",
                 }}
               >
                 <PdfViewer
