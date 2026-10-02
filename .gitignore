@@ -3,10 +3,14 @@
 claudeflare.txt
 
 # donnees generees
-data/
+# NOTE: anchor these to the repo root. An unanchored "data/" also matches
+# frontend/src/data/, which holds source code (logos.js) and must be tracked.
+/data/
+/ammc_report_scraper/data/
 .chroma/
 __pycache__/
 *.pyc
+*.log
 
 # frontend
 frontend/node_modules/
