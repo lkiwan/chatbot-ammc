@@ -2410,6 +2410,25 @@ input, textarea { font-family: var(--sans); }
 .adash-conv-bubble { max-width: 92%; font-size: 14px; }
   }
 
+  /* Edge swipe affordance: a slim strip that hints a swipe is armed */
+  .edge-hint {
+    position: fixed;
+    top: 0; bottom: 0;
+    width: 26px;
+    z-index: 95;
+    pointer-events: none;
+    opacity: .5;
+  }
+  .edge-hint-left {
+    left: 0;
+    background: linear-gradient(to right, rgba(11,20,36,.32), transparent);
+  }
+  .edge-hint-right {
+    right: 0;
+    background: linear-gradient(to left, rgba(11,20,36,.32), transparent);
+  }
+  .app { touch-action: pan-y; }
+
 /* ══════════════════════════════════════════════════════════════════════
    iOS home-screen (standalone) chrome insets
    Some iOS builds report env(safe-area-inset-top) as 0 even when the app is

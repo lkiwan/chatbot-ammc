@@ -6,6 +6,7 @@ import PdfViewer from "./components/PdfViewer.jsx";
 import Splitter from "./components/Splitter.jsx";
 import Login from "./components/Login.jsx";
 import AdminDashboard from "./components/AdminDashboard.jsx";
+import useEdgeSwipe from "./useEdgeSwipe.js";
 
 const LS_KEY      = "ammc-layout";
 const SESSION_KEY = "ae-session";
@@ -55,6 +56,17 @@ export default function App() {
   const [pdfOpen, setPdfOpen]             = useState(() => !window.matchMedia("(max-width: 860px)").matches);
   const [activeSource, setActiveSource]   = useState(null);
   const [sizes, setSizes]         = useState(loadSizes);
+
+  // Touch-only: swipe in from the left edge opens the menu, from the right
+  // edge opens the PDF viewer. Progress drives the panel transform so the
+  // drawer tracks the finger instead of snapping open at the end.
+  const swipe = useEdgeSwipe({
+    enabled: isMobile && !adminView && !!auth && sidebarOpen !== true,
+    width: isMobile ? window.innerWidth * 0.82 : 0,
+    onOpenStart: () => setSidebarOpen(true),
+    onOpenEnd: () => setPdfOpen(true),
+  });
+  const swipeProgress = swipe.progress;
 
   useEffect(() => {
     if (!auth) return;
@@ -137,7 +149,15 @@ export default function App() {
   );
 
   return (
-    <div className="app">
+    <div className="app" {...swipe.bind}>
+      {/* Edge affordances: hint where an edge swipe is armed */}
+      {isMobile && !sidebarOpen && (
+        <>
+          <span className="edge-hint edge-hint-left" aria-hidden="true" />
+          <span className="edge-hint edge-hint-right" aria-hidden="true" />
+        </>
+      )}
+
       {/* ── Topbar ── */}
       <header className="topbar">
         <div className="topbar-left">
@@ -235,10 +255,30 @@ export default function App() {
         )}
 
         {/* ── Mobile menu (drawer) ── */}
-        {isMobile && sidebarOpen && (
-          <div className="mobile-nav" role="dialog" aria-modal="true">
-            <div className="mobile-nav-scrim" onClick={() => setSidebarOpen(false)} />
-            <div className="mobile-nav-panel">
+        {(isMobile && (sidebarOpen || (swipe.edge === "start" && swipeProgress > 0))) && (
+          <div
+            className="mobile-nav"
+            role="dialog"
+            aria-modal="true"
+            style={{
+              // follow the finger; once committed, sidebarOpen renders it fully open
+              opacity: sidebarOpen ? 1 : swipeProgress,
+            }}
+          >
+            <div
+              className="mobile-nav-scrim"
+              style={{ opacity: sidebarOpen ? 1 : swipeProgress }}
+              onClick={() => setSidebarOpen(false)}
+            />
+            <div
+              className="mobile-nav-panel"
+              style={{
+                transform: sidebarOpen
+                  ? "translateX(0)"
+                  : `translateX(${(1 - swipeProgress) * -100}%)`,
+                transition: swipe.edge ? "none" : "transform .25s cubic-bezier(.22,1,.36,1)",
+              }}
+            >
               <div className="mobile-nav-head">
                 <img src="/logo.png" alt="AnnualEdge" className="mobile-nav-logo" />
                 <span className="mobile-nav-title">AnnualEdge</span>
@@ -272,7 +312,7 @@ export default function App() {
             onTogglePdf={() => setPdfOpen((v) => !v)}
           />
 
-          {pdfOpen && (
+          {(pdfOpen || (isMobile && swipe.edge === "end" && swipeProgress > 0)) && (
             <>
               <Splitter
                 orientation="vertical"
@@ -280,7 +320,15 @@ export default function App() {
                   setSizes((s) => ({ ...s, pdf: clamp(s.pdf - d, 280, 980) }))
                 }
               />
-              <div className="pdf-right-wrap" style={{ width: sizes.pdf }}>
+              <div
+                className="pdf-right-wrap"
+                style={{
+                  width: isMobile ? "100%" : sizes.pdf,
+                  // slide in from the right as the finger drags left
+                  transform: pdfOpen ? "translateX(0)" : `translateX(${(1 - swipeProgress) * 100}%)`,
+                  transition: swipe.edge ? "none" : "transform .25s cubic-bezier(.22,1,.36,1)",
+                }}
+              >
                 <PdfViewer
                   source={activeSource}
                   company={activeCompany}
