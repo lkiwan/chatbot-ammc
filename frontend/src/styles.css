@@ -2407,5 +2407,36 @@ input, textarea { font-family: var(--sans); }
   .adash-umodal-box { height: 94vh; border-radius: 12px; }
   .adash-umodal-head { padding: 11px 12px; }
   .adash-umodal-body { padding: 12px; }
-  .adash-conv-bubble { max-width: 92%; font-size: 14px; }
+.adash-conv-bubble { max-width: 92%; font-size: 14px; }
+  }
+
+/* ══════════════════════════════════════════════════════════════════════
+   iOS home-screen (standalone) chrome insets
+   Some iOS builds report env(safe-area-inset-top) as 0 even when the app is
+   launched from the home screen, which leaves the topbar under the Dynamic
+   Island. display-mode:standalone lets us guarantee clearance with a minimum
+   top inset; env() is still preferred when iOS does report the real value.
+   ══════════════════════════════════════════════════════════════════════ */
+@media (display-mode: standalone) {
+  :root {
+    --ae-safe-top: max(env(safe-area-inset-top, 0px), 48px);
+    --ae-safe-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+  }
+
+  .topbar {
+    height: calc(var(--topbar-h) + var(--ae-safe-top));
+    padding-top: var(--ae-safe-top);
+  }
+
+  .chat-composer {
+    padding-bottom: calc(10px + var(--ae-safe-bottom));
+  }
+
+  .mobile-nav-head {
+    padding-top: calc(12px + var(--ae-safe-top));
+  }
+
+  .login-screen {
+    padding-top: calc(14px + var(--ae-safe-top));
+  }
 }
