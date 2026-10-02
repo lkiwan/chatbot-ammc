@@ -159,7 +159,7 @@ export default function App() {
   );
 
   return (
-    <div className="app" {...swipe.bind}>
+    <div className="app">
       {/* Edge affordances: hint where an edge swipe is armed */}
       {isMobile && !sidebarOpen && !pdfOpen && (
         <span className="edge-hint edge-hint-left" aria-hidden="true" />
@@ -277,7 +277,13 @@ export default function App() {
             <div
               className="mobile-nav-scrim"
               style={{ opacity: menuOpenness }}
-              onClick={() => setSidebarOpen(false)}
+              onClick={() => {
+                // Ignore the click that ends an edge swipe: the swipe already
+                // decided what should happen, and closing here too would make
+                // a swipe from the far edge just dismiss this panel.
+                if (swipe.shouldSwallowClick) return;
+                setSidebarOpen(false);
+              }}
             />
             <div
               className="mobile-nav-panel"
