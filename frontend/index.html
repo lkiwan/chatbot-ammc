@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>AnnualEdge · Financial Intelligence</title>
     <meta name="description" content="Analyse des rapports annuels des societes cotees a la Casablanca Stock Exchange." />
 
@@ -16,7 +16,9 @@
     <meta name="theme-color" content="#0b1424" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default" (not black-translucent) keeps iOS from extending the webview
+         under the status bar, which made standalone launches render zoomed-in -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="AnnualEdge" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />

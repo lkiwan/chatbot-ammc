@@ -48,9 +48,9 @@
 
 /* ─── Reset ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; height: 100%; }
-body {
-  margin: 0; height: 100%;
+html { scroll-behavior: smooth; height: 100%; overflow-x: hidden; }
+    body {
+      margin: 0; height: 100%; overflow-x: hidden;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -2334,7 +2334,6 @@ input, textarea { font-family: var(--sans); }
   /* PDF viewer: full-screen overlay above everything */
   .pdf-right-wrap {
     position: fixed; inset: 0; z-index: 130;
-    width: 100vw !important;
     background: var(--surface);
   }
   .pdf-right { border-radius: 0; border: none; }
