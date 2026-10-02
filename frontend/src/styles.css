@@ -71,12 +71,16 @@ input, textarea { font-family: var(--sans); }
 
 /* ─── Topbar ─────────────────────────────────────────────────── */
 .topbar {
-  height: var(--topbar-h);
+  /* + safe-area so the menu button stays reachable below the iPhone 14 Pro
+     Dynamic Island when launched from the home screen */
+  height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 16px 0 12px;
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: rgba(255,255,255,.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -961,7 +965,10 @@ input, textarea { font-family: var(--sans); }
 /* ─── Composer ──────────────────────────────────────────────── */
 .chat-composer {
   display: flex; align-items: flex-end; gap: 8px;
-  padding: 12px 14px 10px;
+  /* bottom safe-area keeps the composer above the iOS home indicator */
+  padding: 12px max(14px, env(safe-area-inset-right, 0px))
+           calc(10px + env(safe-area-inset-bottom, 0px))
+           max(14px, env(safe-area-inset-left, 0px));
   border-top: 1px solid var(--line);
   background: linear-gradient(to bottom, var(--surface-2), var(--surface));
   flex-shrink: 0;
@@ -2313,7 +2320,11 @@ input, textarea { font-family: var(--sans); }
   @keyframes mobile-nav-in { from { transform: translateX(-24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   .mobile-nav-head {
     display: flex; align-items: center; gap: 9px;
-    padding: 12px 14px;
+    /* safe-area so the drawer title + close button clear the Dynamic Island */
+    padding: calc(12px + env(safe-area-inset-top, 0px))
+             max(14px, env(safe-area-inset-right, 0px))
+             12px
+             max(14px, env(safe-area-inset-left, 0px));
     border-bottom: 1px solid var(--sidebar-line);
     flex-shrink: 0;
   }
@@ -2331,7 +2342,9 @@ input, textarea { font-family: var(--sans); }
     width: 100%; min-height: 0; flex: 1;
   }
 
-  /* PDF viewer: full-screen overlay above everything */
+  /* PDF viewer: full-screen overlay above everything.
+     inset:0 already fills the viewport; do NOT use 100vw here - it overflows
+     the visual viewport on iOS and makes standalone launch render zoomed. */
   .pdf-right-wrap {
     position: fixed; inset: 0; z-index: 130;
     background: var(--surface);
