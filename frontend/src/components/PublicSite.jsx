@@ -330,7 +330,11 @@ export default function PublicRoute({ onEnter }) {
   const m = path.match(/^\/company\/([^/]+)\/?$/);
   if (m) return <CompanyPage name={decodeURIComponent(m[1])} />;
   if (/^\/companies\/?$/.test(path)) return <CompaniesPage />;
-  if (/^\/?$/.test(path)) return <LandingPage onEnter={() => go("/app")} />;
+  if (/^\/?$/.test(path)) return <LandingPage onEnter={onEnter} />;
+  if (/^\/app\/?$/.test(path)) {
+    onEnter?.();
+    return null;
+  }
   const legal = Object.keys(LEGAL_PAGES).find((k) => LEGAL_PAGES[k].path === path);
   if (legal) return <LegalRoute pageKey={legal} />;
   return (
