@@ -73,8 +73,16 @@ function assetTag(rel, href) {
   return `    <link rel="${rel}" href="${href}" />`;
 }
 
-/** Rebuilds a full document from the built index.html, swapping the body. */
-function buildDoc({ title, description, bodyHtml, canonical, head, bodyClass }) {
+/**
+ * Rebuilds a full document from the built index.html, swapping the body.
+ *
+ * The prerendered markup goes INSIDE #root. React mounts with createRoot(),
+ * which clears the container before its first render, so crawlers read the
+ * static text and a live browser replaces it with the real app. Emitting the
+ * markup outside #root instead leaves createRoot(null), which silently kills
+ * every interactive control on the page.
+ */
+function buildDoc({ title, description, bodyHtml, canonical, head, bodyClass, robots }) {
   return `<!doctype html>
 <html lang="fr">
   <head>
@@ -83,10 +91,37 @@ function buildDoc({ title, description, bodyHtml, canonical, head, bodyClass }) 
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
     <link rel="canonical" href="${canonical}" />
-${head}
+${robots ? `    <meta name="robots" content="${robots}" />\n` : ""}${head}
   </head>
   <body${bodyClass ? ` class="${bodyClass}"` : ""}>
+    <div id="root">
 ${bodyHtml}
+    </div>
+    <script type="module" src="/assets/entry.js"></script>
+  </body>
+</html>
+`;
+}
+
+/**
+ * The app shell: an empty #root for React to fill, no marketing content and no
+ * indexable text. /app must NOT be served the landing prerender, otherwise
+ * "Ouvrir l'application" appears to do nothing - the browser would just reload
+ * the same marketing page.
+ */
+function buildAppShell() {
+  return `<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Connexion · ${esc(SITE.siteName)}</title>
+    <meta name="description" content="Connexion à l'application ${esc(SITE.siteName)}." />
+    <meta name="robots" content="noindex, nofollow" />
+${head}
+  </head>
+  <body>
+    <div id="root"></div>
     <script type="module" src="/assets/entry.js"></script>
   </body>
 </html>
@@ -346,13 +381,16 @@ function writeRoute(routePath, { title, description, inner }) {
     bodyClass: "pub-body",
     bodyHtml: inner,
   });
-  const file =
-    routePath === "/"
-      ? join(dist, "index.html")
-      : join(dist, routePath.replace(/^\//, ""), "index.html");
+  const file = outFileFor(routePath);
   mkdirSync(join(file, ".."), { recursive: true });
   writeFileSync(file, html, "utf8");
   written++;
+}
+
+function outFileFor(routePath) {
+  return routePath === "/"
+    ? join(dist, "index.html")
+    : join(dist, routePath.replace(/^\//, ""), "index.html");
 }
 
 writeRoute("/", {
@@ -381,6 +419,11 @@ for (const key of Object.keys(LEGAL_ROUTES)) {
     inner: legalPage(key),
   });
 }
+
+// The private app gets a bare shell - see buildAppShell() for why it must not
+// receive the landing prerender.
+mkdirSync(join(dist, "app"), { recursive: true });
+writeFileSync(join(dist, "app", "index.html"), buildAppShell(), "utf8");
 
 /**
  * The prerendered documents all reference a stable /assets/entry.js. Copy the
