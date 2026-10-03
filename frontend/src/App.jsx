@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { fetchHealth, fetchCompanies, fetchReports, trackEvent } from "./api.js";
 import Sidebar from "./components/Sidebar.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
@@ -57,6 +57,23 @@ export default function App() {
   const [activeSource, setActiveSource]   = useState(null);
   const [sizes, setSizes]         = useState(loadSizes);
 
+  // Only one side panel may be open at a time. On a phone the menu is a
+  // full-screen drawer and the PDF is a full-screen overlay, so showing both
+  // at once leaves no chat visible and no obvious way back.
+  // Computed from the current state rather than inside an updater, because a
+// state updater must stay pure and React may invoke it more than once.
+  const toggleSidebar = useCallback(() => {
+    const next = !sidebarOpen;
+    setSidebarOpen(next);
+    if (next && isMobile) setPdfOpen(false);
+  }, [sidebarOpen, isMobile]);
+
+  const togglePdf = useCallback(() => {
+    const next = !pdfOpen;
+    setPdfOpen(next);
+    if (next && isMobile) setSidebarOpen(false);
+  }, [pdfOpen, isMobile]);
+
   // Touch-only: swipe in from the left edge toggles the menu, from the right
   // edge toggles the PDF viewer. Swiping back the other way closes an open
   // panel. Progress is "openness" 0 -> 1 so the panels track the finger in
@@ -66,8 +83,8 @@ export default function App() {
     startOpen: sidebarOpen,
     endOpen: pdfOpen,
     width: isMobile ? window.innerWidth * 0.82 : 0,
-    onToggleStart: () => setSidebarOpen((v) => !v),
-    onToggleEnd: () => setPdfOpen((v) => !v),
+    onToggleStart: toggleSidebar,
+    onToggleEnd: togglePdf,
   });
   const swipeProgress = swipe.progress;
 
@@ -173,7 +190,7 @@ export default function App() {
         <div className="topbar-left">
           <button
             className="topbar-menu"
-            onClick={() => setSidebarOpen((v) => !v)}
+            onClick={() => toggleSidebar()}
             aria-label="Toggle sidebar"
           >
             <span /><span /><span />
@@ -205,7 +222,7 @@ export default function App() {
           )}
           <button
             className={`btn-pdf-toggle ${pdfOpen ? "active" : ""}`}
-            onClick={() => setPdfOpen((v) => !v)}
+            onClick={() => togglePdf()}
             aria-pressed={pdfOpen}
             title="Show / hide PDF viewer"
           >
@@ -322,7 +339,7 @@ export default function App() {
             isDemo={auth?.role === "demo"}
             userToken={auth?.role === "user" ? auth?.token || "" : ""}
             pdfOpen={pdfOpen}
-            onTogglePdf={() => setPdfOpen((v) => !v)}
+            onTogglePdf={togglePdf}
           />
 
           {(!isMobile || pdfOpen || (swipe.edge === "end" && swipeProgress > 0)) && (
