@@ -5,7 +5,9 @@
   "description": "Convenience wrapper so npm scripts can be run from the repo root. The actual app lives in frontend/.",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
+    "build": "npm --prefix frontend run build && node scripts/prerender.mjs",
+    "prerender": "node scripts/prerender.mjs",
+    "public-index": "node scripts/generate-public-index.mjs",
     "preview": "npm --prefix frontend run preview"
   }
 }

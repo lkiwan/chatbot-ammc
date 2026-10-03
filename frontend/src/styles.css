@@ -2518,7 +2518,24 @@ input, textarea { font-family: var(--sans); }
     font-size: 13px; color: #64748b;
   }
   .pub-foot p { margin: 0; }
+  .pub-foot-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .pub-foot-links a { color: #64748b; text-decoration: none; }
+  .pub-foot-links a:hover { color: var(--accent, #2563eb); text-decoration: underline; }
   .pub-loading { color: #64748b; }
+  .pub-back { margin-top: 26px; font-size: 14px; }
+  .pub-back a { color: var(--accent, #2563eb); text-decoration: none; font-weight: 600; }
+
+  /* Legal / static pages */
+  .pub-legal-date { color: #64748b; font-size: 13.5px; font-weight: 500; margin-bottom: 22px; }
+  .pub-legal ul { margin: 0 0 14px; padding-left: 20px; }
+  .pub-legal li { line-height: 1.6; margin-bottom: 6px; }
+  .pub-legal > h2 + p, .pub-legal h2 + ul { margin-top: 0; }
+
+  /* Prerendered pages load this CSS before the JS bundle arrives, so the
+     first paint is already styled. */
+  .pub-body { margin: 0; background: var(--bg, #f8fafc); }
+  .pub-body .pub { min-height: 100vh; }
+  .pub-body .pub-main { padding-top: 34px; }
 
   /* ── Google AdSense ────────────────────────────────────────────────
      Space is reserved up front (min-height on .ad-slot) so a late-filling

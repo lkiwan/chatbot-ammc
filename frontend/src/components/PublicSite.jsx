@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import AdSlot, { AD_SLOTS } from "./AdSlot.jsx";
 import { TICKERS, LOGO_URLS } from "../data/logos.js";
 import { PUBLIC_INDEX } from "../data/publicIndex.js";
+import LegalRoute, { LEGAL_PAGES } from "./LegalSite.jsx";
+import SITE from "../content/site.json";
 
 /**
  * Public, crawlable pages.
@@ -53,7 +55,7 @@ function head(title, description) {
   }, [title, description]);
 }
 
-const SITE = "https://www.aivox.website";
+const SITE_URL = "https://www.aivox.website";
 
 function tickerFor(name) {
   return TICKERS[name] || "";
@@ -123,7 +125,7 @@ function CompanyPage({ name }) {
         </p>
 
         <div className="pub-cta">
-          <a className="pub-cta-btn" href={`${SITE}/?company=${found.company_normalized}`}>
+          <a className="pub-cta-btn" href={`/app?company=${found.company_normalized}`}>
             Ouvrir l'application
           </a>
         </div>
@@ -285,12 +287,20 @@ function PublicShell({ children }) {
         </a>
         <nav>
           <a href="/companies">Sociétés</a>
-          <a href="/">Accueil</a>
+          <a href="/about">À propos</a>
+          <a href="/contact">Contact</a>
         </nav>
       </header>
       <main className="pub-main">{children}</main>
       <footer className="pub-foot">
-        <p>AnnualEdge — analyse des rapports annuels des sociétés cotées à la Bourse de Casablanca.</p>
+        <p>{SITE.siteName} — {SITE.tagline}.</p>
+        <p className="pub-foot-links">
+          <a href="/privacy">Confidentialité</a> ·{" "}
+          <a href="/terms">Conditions</a> ·{" "}
+          <a href="/about">À propos</a> ·{" "}
+          <a href="/contact">Contact</a> ·{" "}
+          <a href="/app">Se connecter</a>
+        </p>
       </footer>
     </div>
   );
@@ -321,6 +331,8 @@ export default function PublicRoute({ onEnter }) {
   if (m) return <CompanyPage name={decodeURIComponent(m[1])} />;
   if (/^\/companies\/?$/.test(path)) return <CompaniesPage />;
   if (/^\/?$/.test(path)) return <LandingPage onEnter={() => go("/app")} />;
+  const legal = Object.keys(LEGAL_PAGES).find((k) => LEGAL_PAGES[k].path === path);
+  if (legal) return <LegalRoute pageKey={legal} />;
   return (
     <PublicShell>
       <NotFound what={path} />

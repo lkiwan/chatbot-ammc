@@ -1,0 +1,320 @@
+{
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "description": "Comment AnnualEdge collecte, utilise et protège les données personnelles de ses utilisateurs, conformément au RGPD et à la loi 09-08 relative à la protection des personnes physiques à l'égard du traitement des données à caractère personnel.",
+    "updated": "3 octobre 2026",
+    "blocks": [
+      {
+        "type": "h2",
+        "text": "1. Responsable du traitement"
+      },
+      {
+        "type": "p",
+        "text": "Le site AnnualEdge (ci-après « le Site ») est édité et exploité par {{legalEntityName}}, {{operatorName}}, demeurant {{postalAddress}}, {{country}} (« l'Éditeur »). L'Éditeur est le responsable de traitement des données personnelles collectées sur le Site."
+      },
+      {
+        "type": "p",
+        "text": "Pour toute question relative à la protection de vos données personnelles, vous pouvez nous écrire à l'adresse {{contactEmail}}. LeSite est hébergé par {{hostingProvider}}, hébergeur situé aux {{hostingRegion}}."
+      },
+      {
+        "type": "h2",
+        "text": "2. Données collectées"
+      },
+      {
+        "type": "p",
+        "text": "L'Éditeur s'efforce de collecter le minimum de données nécessaire au fonctionnement du Service. Selon les pages visitées, les informations suivantes peuvent être traitées :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Données de compte : l'adresse e-mail que vous saisissez pour vous connecter au Service. Le Site ne vous demande ni mot de passe, ni nom, ni prénom : l'accès est réservé aux personnes autorisées.",
+          "Données d'utilisation technique : horodatage des requêtes, pages consultées, durée de session, adresse IP et type de navigateur, conservés dans des journaux de serveur à des fins de sécurité et de bon fonctionnement.",
+          "Contenu des questions : les questions que vous posez à l'assistant, accompagnées des réponses produites, afin de vous fournir le service demandé et d'améliorer sa qualité.",
+          "Aucun numéro de carte bancaire, aucune donnée de paiement et aucune pièce d'identité ne sont collectés. Le Site ne propose aucun service de paiement."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "3. Finalités et bases légales"
+      },
+      {
+        "type": "p",
+        "text": "Les données sont traitées exclusively pour les finalités suivantes :"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Exécution du contrat : authentification, traitement de vos questions et affichage des réponses sourcées (art. 6.1.b du RGPD).",
+          "Intérêt légitime : sécurisation du Site, prévention de la fraude, mesure d'audience et amélioration du Service (art. 6.1.f du RGPD).",
+          "Obligation légale : conservation des registres et responding to competent administrative or judicial requests (art. 6.1.c du RGPD)."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Aucune décision automatisée ni profilage au sens de l'article 22 du RGPD n'est mis en œuvre. Vos données ne sont ni vendues, ni louées, ni cédées à des tiers à des fins commerciales."
+      },
+      {
+        "type": "h2",
+        "text": "4. Sous-traitants et transferts"
+      },
+      {
+        "type": "p",
+        "text": "L'Éditeur fait appel à des prestataires techniques qui traitent des données pour son compte, notamment l'hébergeur du Site et le fournisseur d'hébergement des modèles linguistiques utilisé pour produire les réponses. Ces prestataires agissent sur instruction documentée de l'Éditeur et sont soumis à des obligations contractuelles de confidentialité."
+      },
+      {
+        "type": "p",
+        "text": "Certains prestataires étant établis hors de l'Espace économique européen, des garanties appropriées sont mises en œuvre, notamment les clauses contractuelles types de la Commission européenne. Vous pouvez obtenir la liste des transferts en cours ainsi que leurs garanties en écrivant à {{contactEmail}}."
+      },
+      {
+        "type": "p",
+        "text": "Le Site charge également des ressources publicitaires et de mesure d'audience auprès de Google (Google AdSense), qui peuvent traiter votre adresse IP et des informations relatives à votre navigation. Ces traitements sont régis par les conditions de Google. Vous pouvez configurer vos préférences via la page « Paramètres des annonces » de Google, accessible depuis le pied de page du Site."
+      },
+      {
+        "type": "h2",
+        "text": "5. Durées de conservation"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Données de compte : conservées pendant toute la durée de votre abonnement, puis supprimées sous trente (30) jours.",
+          "Journaux de connexion et données techniques : conservés six (6) mois maximum.",
+          "Historique des questions et des réponses : conservé douze (12) mois à des fins d'amélioration du Service, puis anonymisé ou supprimé."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "6. Vos droits"
+      },
+      {
+        "type": "p",
+        "text": "Vous disposez, à tout moment, des droits suivants : droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données, ainsi que du droit de définir des directives relatives à leur sort après votre décès. Vous pouvez également introduire une réclamation auprès de l'autorité de contrôle compétente (en France : CNIL ; au Maroc : Commission Nationale de contrôle de la protection des Données à caractère Personnel, « CNDP »)."
+      },
+      {
+        "type": "p",
+        "text": "Pour exercer ces droits, écrivez à {{contactEmail}} en précisant votre demande. L'Éditeur y répond dans un délai d'un (1) mois. Vous pouvez également utiliser le lien « contacts » du Site pour nous joindre directement."
+      },
+      {
+        "type": "h2",
+        "text": "7. Sécurité"
+      },
+      {
+        "type": "p",
+        "text": "L'Éditeur met en œuvre les mesures techniques et organisationnelles appropriées pour protéger vos données contre la perte, l'accès non autorisé, la divulgation ou l'altération : chiffrement des échanges, contrôle des accès, limitation des entrées de journal et sauvegardes régulières. Aucun système n'étant infaillible, l'Éditeur ne peut garantir une sécurité absolue."
+      },
+      {
+        "type": "h2",
+        "text": "8. Mineurs"
+      },
+      {
+        "type": "p",
+        "text": "Le Site s'adresse à des personnes majeures ou à des mineurs agissant avec l'accord de leur représentant légal. L'Éditeur ne collecte pas sciemment de données concernant des enfants de moins de quinze (15) ans. Si vous pensez qu'un mineur nous a transmis des données sans autorisation, contactez-nous à {{contactEmail}} afin que nous puissions les supprimer."
+      },
+      {
+        "type": "h2",
+        "text": "9. Modifications"
+      },
+      {
+        "type": "p",
+        "text": "La présente politique peut être amenée à évoluer. En cas de modification substantielle, la date de mise à jour figurant en haut de page sera modifiée et, le cas échéant, vous en serez informé par courriel."
+      },
+      {
+        "type": "h2",
+        "text": "10. Contact"
+      },
+      {
+        "type": "p",
+        "text": "Pour toute question relative à cette politique de confidentialité : {{contactEmail}} — {{legalEntityName}}, {{postalAddress}}."
+      }
+    ]
+  },
+  "about": {
+    "title": "À propos d'AnnualEdge",
+    "description": "AnnualEdge analyse les rapports annuels des sociétés cotées à la Bourse de Casablanca. Découvrez la source des données, la méthode d'indexation et les limites de l'outil.",
+    "updated": "3 octobre 2026",
+    "blocks": [
+      {
+        "type": "p",
+        "text": "AnnualEdge est un moteur d'analyse des rapports annuels publiés par les sociétés cotées à la Bourse de Casablanca. L'outil transforme des documents administratifs longs et denses en réponses courtes, vérifiables et citant la page exacte de leur source."
+      },
+      {
+        "type": "h2",
+        "text": "Ce que nous indexons"
+      },
+      {
+        "type": "p",
+        "text": "Notre index recense 470 rapports annuels et financiers, publications de 102 sociétés réparties en 18 secteurs (banques, assurances, télécoms, énergie, mines, pharmaceutique, agroalimentaire, matériaux de construction, holdings, sociétés immobilières, sociétés de financement, commerce et transport, chimie, métallurgie, pétrole et gaz, papeterie, carton et emballage, holdings). Ces documents totalisent 49 922 pages, découpées en 109 126 extraits indexés et interrogeables en langage naturel."
+      },
+      {
+        "type": "p",
+        "text": "Les documents proviennent des états financiers et des rapports annuels publiés par les émetteurs et diffusés par l'AMMC (Autorité Marocaine du Marché des Capitaux). Chaque page de rapport est associée à des données structurées : poste comptable, valeur, exercice et libellé."
+      },
+      {
+        "type": "h2",
+        "text": "Comment fonctionne l'assistant"
+      },
+      {
+        "type": "p",
+        "text": "À chaque question, le moteur recherche les extraits les plus pertinents dans l'index, les classe par pertinence, puis produit une réponse en citant systématiquement la société, le rapport, l'exercice et la page d'où elle est tirée. Aucune réponse n'est produite à partir de données absentes des documents indexés : lorsqu'une information n'est pas trouvée, l'assistant l'indique."
+      },
+      {
+        "type": "p",
+        "text": "L'index est mis à jour à chaque publication annuelle afin que les exercices les plus récents soient disponibles."
+      },
+      {
+        "type": "h2",
+        "text": "Limites et avertissements"
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Les réponses générées sont une aide à la lecture des documents et ne constituent ni un conseil en investissement, ni un conseil comptable, fiscal ou juridique.",
+          "Les données publiées par les émetteurs peuvent contenir des erreurs, des valeurs non comparables ou des présentations hétérogènes entre exercices.",
+          "Les chiffres proviennent des documents publiés par les sociétés : leur exactitude n'est pas garantie par l'Éditeur.",
+          "Toute décision d'investissement doit être fondée sur une analyse indépendante et, le cas échéant, sur l'avis d'un professionnel réglementé."
+        ]
+      },
+      {
+        "type": "h2",
+        "text": "Éditeur du site"
+      },
+      {
+        "type": "p",
+        "text": "AnnualEdge est édité par {{legalEntityName}}, {{operatorName}}, {{postalAddress}}, {{country}}. Contact : {{contactEmail}}. Hébergement : {{hostingProvider}}."
+      }
+    ]
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "Contactez l'équipe d'AnnualEdge pour toute question sur le service, l'accès, la réutilisation des données ou la vie privée.",
+    "updated": "3 octobre 2026",
+    "blocks": [
+      {
+        "type": "p",
+        "text": "Pour toute demande relative à AnnualEdge, utilisez le canal corrépondant ci-dessous. Nous nous engageons à répondre sous deux (2) jours ouvrés."
+      },
+      {
+        "type": "h2",
+        "text": "Demandes générales et support"
+      },
+      {
+        "type": "p",
+        "text": "Accès au service, question sur un document indexé, suggestion de société à ajouter, signalement d'une réponse inexacte : {{contactEmail}}"
+      },
+      {
+        "type": "h2",
+        "text": "Données personnelles et vie privée"
+      },
+      {
+        "type": "p",
+        "text": "Exercer un droit d'accès, de rectification ou d'effacement sur vos données personnelles : {{contactEmail}}. Voir la politique de confidentialité pour le détail des traitements et des durées de conservation."
+      },
+      {
+        "type": "h2",
+        "text": "Réutilisation des données"
+      },
+      {
+        "type": "p",
+        "text": "Licences, demandes de réutilisation des extraits indexés, partenariats et presse : {{contactEmail}}"
+      },
+      {
+        "type": "h2",
+        "text": "Coordonnées postales"
+      },
+      {
+        "type": "p",
+        "text": "{{legalEntityName}} — À l'attention du responsable de la publication — {{postalAddress}}, {{country}}"
+      }
+    ]
+  },
+  "terms": {
+    "title": "Conditions générales d'utilisation",
+    "description": "Conditions d'accès et d'utilisation du service AnnualEdge, accepté par l'éditeur et les utilisateurs du site.",
+    "updated": "3 octobre 2026",
+    "blocks": [
+      {
+        "type": "h2",
+        "text": "1. Objet et acceptation"
+      },
+      {
+        "type": "p",
+        "text": "Les présentes conditions régissent l'accès et l'utilisation du site AnnualEdge (ci-après « le Site »), édité par {{legalEntityName}}, {{operatorName}}, {{postalAddress}}, {{country}}. Toute utilisation du Site vaut acceptation pleine et entière des présentes conditions. Si vous ne les acceptez pas, veuillez ne pas utiliser le Site."
+      },
+      {
+        "type": "h2",
+        "text": "2. Accès au service"
+      },
+      {
+        "type": "p",
+        "text": "L'accès à l'assistant d'analyse est réservé aux personnes autorisées par l'Éditeur. L'accès est personnel, non cessible et révocable à tout moment. L'Éditeur se réserve le droit de suspendre ou de supprimer un accès en cas d'utilisation frauduleuse, de robotisation, de tentatives d'intrusion ou de tout usage nuisible au Service."
+      },
+      {
+        "type": "h2",
+        "text": "3. Propriété intellectuelle"
+      },
+      {
+        "type": "p",
+        "text": "L'ensemble des éléments du Site (structure, texts, identité visuelle, code, logos, marques) est protégé par le droit d'auteur et reste la propriété de l'Éditeur ou de ses titulaires de droits. Aucune reproduction, représentation ou adaptation, totale ou partielle, n'est autorisée sans autorisation écrite préalable, à l'exception des extractsAux fins de citation et de revue, dans les conditions prévues par la loi."
+      },
+      {
+        "type": "h2",
+        "text": "4. Sources et exactitude"
+      },
+      {
+        "type": "p",
+        "text": "Le Site analyse des documents publics publiés par les émetteurs cotés et diffusés par l'Autorité Marocaine du Marché des Capitaux. L'Éditeur met tout en œuvre pour assurer l'exactitude et la mise à jour de l'index, mais ne garantit pas l'exactitude, l'exhaustivité ni l'actualité des informations présentées. Les réponses générées sont fournies à titre documentaire."
+      },
+      {
+        "type": "p",
+        "text": "Les réponses produites ne constituent ni un conseil en investissement, ni un conseil comptable, fiscal, juridique ou financier. L'utilisation du Site engage l'utilisateur sous sa seule responsabilité."
+      },
+      {
+        "type": "h2",
+        "text": "5. Publicité"
+      },
+      {
+        "type": "p",
+        "text": "Le Site peut diffuser des publicités, notamment via le réseau Google AdSense. Ces publicités sont indépendantes de l'Éditeur et des sociétés analysées. L'Éditeur n'exerce aucun contrôle sur le contenu des publicités ni sur les sites vers lesquels elles renvoient."
+      },
+      {
+        "type": "h2",
+        "text": "6. Responsabilité"
+      },
+      {
+        "type": "p",
+        "text": "L'Éditeur met tout en œuvre pour assurer la disponibilité et la sécurité du Site, sans pouvoir le garantir. Sa responsabilité ne saurait être engagée pour les dommages liés à une interruption de service, un défaut de contenu, une erreur dans une réponse générée, ou à l'accès à un document tiers. L'utilisateur reconnaît utiliser le Service à ses propres risques."
+      },
+      {
+        "type": "h2",
+        "text": "7. Données personnelles"
+      },
+      {
+        "type": "p",
+        "text": "Le traitement des données personnelles est décrit dans la politique de confidentialité, qui fait partie intégrante des présentes conditions."
+      },
+      {
+        "type": "h2",
+        "text": "8. Modification des conditions"
+      },
+      {
+        "type": "p",
+        "text": "L'Éditeur peut modifier les présentes conditions à tout moment. La version applicable est celle publiée sur le Site à la date de votre utilisation. L'Éditeur s'efforcera de vous informer de toute modification substantielle."
+      },
+      {
+        "type": "h2",
+        "text": "9. Droit applicable"
+      },
+      {
+        "type": "p",
+        "text": "Les présentes conditions sont soumises au droit applicable au Maroc. En cas de différend, une solution amiable sera recherchée avant toute action judiciaire. À défaut d'accord, les tribunaux compétents de {{country}} seront seuls compétents."
+      },
+      {
+        "type": "h2",
+        "text": "10. Contact"
+      },
+      {
+        "type": "p",
+        "text": "Pour toute question relative aux présentes conditions : {{contactEmail}}"
+      }
+    ]
+  }
+}

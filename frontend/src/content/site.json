@@ -1,0 +1,18 @@
+{
+  "siteName": "AnnualEdge",
+  "tagline": "Analyse des rapports annuels des societes cotees a la Bourse de Casablanca",
+  "legalEntityName": "[A COMPLETER : nom de l'entite juridique]",
+  "operatorName": "[A COMPLETER : nom de l'editeur / responsable de la publication]",
+  "contactEmail": "contact@annualedge.com",
+  "postalAddress": "[A COMPLETER : adresse postale complete]",
+  "country": "Maroc",
+  "hostingProvider": "Vercel Inc.",
+  "hostingRegion": "etats-Unis",
+  "updatedDate": "3 octobre 2026",
+  "todo": [
+    "legalEntityName - raison sociale exacte, telle qu'immatriculee",
+    "operatorName - la personne physique ou morale qui publie le site",
+    "contactEmail - une adresse reelle et surveillee (voir section 4)",
+    "postalAddress - adresse de correspondance du responsable de traitement"
+  ]
+}

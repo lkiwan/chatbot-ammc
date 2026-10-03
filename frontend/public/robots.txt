@@ -1,32 +1,18 @@
 # robots.txt for www.aivox.website
 #
-# AI crawlers are blocked: the app renders its content only after a login
-# (see the auth gate in frontend/src/App.jsx), so there is nothing on the HTML
-# for them to read, and a shell page under a bot's name is worse than a 404.
-# Ad crawlers are left open - Google's own review process needs them.
+# The public pages (/, /companies, /company/*, /about, /contact, /privacy,
+# /conditions) are prerendered to static HTML by scripts/prerender.mjs and are
+# open to every crawler, so blocking AI crawlers would no longer hide anything.
+# What stays closed is the authenticated application and the API.
 
-User-agent: GPTBot
-Disallow: /
+# The app itself requires an account. Ad crawlers must be able to see the
+# public pages during review, and Mediapartners-Google reads /robots.txt.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /app
+Disallow: /admin
 
-User-agent: OAI-SearchBot
-Disallow: /
-
-User-agent: ChatGPT-User
-Disallow: /
-
-User-agent: ClaudeBot
-Disallow: /
-
-User-agent: PerplexityBot
-Disallow: /
-
-User-agent: CCBot
-Disallow: /
-
-User-agent: Bytespider
-Disallow: /
-
-# Ad crawlers: allow
 User-agent: Mediapartners-Google
 Allow: /
 
@@ -39,22 +25,16 @@ Allow: /
 User-agent: Mediapartners-Google-Mobile-Swift
 Allow: /
 
+User-agent: AdsBot-Google-Extended
+Allow: /
+
 User-agent: Googlebot
 Allow: /
 
 User-agent: Googlebot-Image
 Allow: /
 
-User-agent: AdsBot-Google-Extended
-Allow: /
-
 User-agent: Bingbot
 Allow: /
-
-# Everything else: no crawling of authenticated areas
-User-agent: *
-Allow: /$
-Disallow: /api/
-Disallow: /admin
 
 Sitemap: https://www.aivox.website/sitemap.xml
