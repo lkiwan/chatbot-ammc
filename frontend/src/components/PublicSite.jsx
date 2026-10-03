@@ -1,0 +1,343 @@
+import React, { useEffect, useState } from "react";
+import { fetchCompanies, fetchReports } from "../api.js";
+import AdSlot, { AD_SLOTS } from "./AdSlot.jsx";
+import { TICKERS, LOGO_URLS } from "../data/logos.js";
+
+/**
+ * Public, crawlable pages.
+ *
+ * These exist because the app itself sits behind a login: an ad-review
+ * crawler only ever sees the login form, which reads as an empty site. These
+ * routes give Google and anyone arriving from search real text (sector,
+ * ticker, available years, report counts) without needing an account.
+ *
+ * Routing is by pathname rather than a router library - there are only three
+ * public routes and the app has no router installed.
+ */
+
+function slugify(name) {
+  return String(name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function usePublicData() {
+  const [companies, setCompanies] = useState([]);
+  const [reports, setReports] = useState(null);
+  const [state, setState] = useState("loading");
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      fetchCompanies().catch(() => []),
+      fetchReports().catch(() => null),
+    ])
+      .then(([c, r]) => {
+        if (!alive) return;
+        setCompanies(c || []);
+        setReports(r);
+        setState("ready");
+      })
+      .catch(() => alive && setState("error"));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return { companies, reports, state };
+}
+
+function head(title, description) {
+  useEffect(() => {
+    document.title = title;
+    const set = (sel, attr, val) => {
+      const el = document.querySelector(sel);
+      if (el) el.setAttribute(attr, val);
+    };
+    set('meta[name="description"]', "content", description);
+  }, [title, description]);
+}
+
+const SITE = "https://www.aivox.website";
+
+function tickerFor(name) {
+  return TICKERS[name] || "";
+}
+
+// ── One company ────────────────────────────────────────────────────────────
+function CompanyPage({ name }) {
+  const { companies, reports, state } = usePublicData();
+
+  const found = companies.find(
+    (c) => c.company_normalized === name || slugify(c.company) === name,
+  );
+
+  head(
+    found ? `${found.company} — rapports annuels | AnnualEdge` : "AnnualEdge",
+    found
+      ? `Rapports annuels de ${found.company} (${found.sector || "Casablanca Stock Exchange"}) disponibles sur AnnualEdge : ${found.years.join(", ")}.`
+      : "AnnualEdge — analyse des rapports annuels des sociétés cotées à la Casablanca Stock Exchange.",
+  );
+
+  if (state === "loading") return <PublicShell><p className="pub-loading">Chargement…</p></PublicShell>;
+  if (!found) return <PublicShell><NotFound what={name} /></PublicShell>;
+
+  const ticker = tickerFor(found.company);
+  const logo = LOGO_URLS[found.company];
+  const sector = found.sector || "Non classé";
+  const years = found.years || [];
+
+  return (
+    <PublicShell>
+      <article className="pub-company">
+        {logo && <img className="pub-company-logo" src={logo} alt={found.company} width="64" height="64" />}
+
+        <h1>{found.company}</h1>
+        <p className="pub-company-sub">
+          {sector}
+          {ticker && <> · Ticker <strong>{ticker}</strong> sur la Bourse de Casablanca</>}
+        </p>
+
+        <h2>Rapports annuels disponibles</h2>
+        <p>
+          AnnualEdge indexe <strong>{years.length}</strong> rapport{years.length > 1 ? "s" : ""}
+          {years.length > 1 ? "s" : ""} de {found.company}, couvrant {years.join(", ")}.
+          Chaque document est découpé en extraits indexés, ce qui permet d'interroger
+          les chiffres clés, les agrégats et le texte du rapport en langage
+          naturel.
+        </p>
+        <ul className="pub-years">
+          {years.map((y) => (
+            <li key={y}>{y}</li>
+          ))}
+        </ul>
+
+        <h2>Ce que vous pouvez analyser</h2>
+        <p>
+          Chiffre d'affaires, résultat net, capacité d'autofinancement, dividendes,
+          indicateurs de rentabilité et structure de l'actionnariat, à partir des
+          comptes annuels publiés. L'outil répond par synthèse sourcée, chaque
+          réponse renvoyant vers la page exacte du rapport.
+        </p>
+
+        <h2>À propos d'AnnualEdge</h2>
+        <p>
+          AnnualEdge est un moteur d'analyse des rapports annuels des sociétés cotées
+          à la Bourse de Casablanca. L'index couvre {reports?.total ?? "plus de 470"}
+          documents et {companies.length} sociétés réparties par secteur, extraits et
+          indexés pour la recherche.
+        </p>
+
+        <div className="pub-cta">
+          <a className="pub-cta-btn" href={`${SITE}/?company=${found.company_normalized}`}>
+            Ouvrir l'application
+          </a>
+        </div>
+
+        <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
+      </article>
+    </PublicShell>
+  );
+}
+
+// ── All companies ──────────────────────────────────────────────────────────
+function CompaniesPage() {
+  const { companies, reports, state } = usePublicData();
+
+  head(
+    "Sociétés cotées indexées | AnnualEdge",
+    `Les ${companies.length} sociétés cotées à la Bourse de Casablanca dont les rapports annuels sont indexés sur AnnualEdge, par secteur.`,
+  );
+
+  if (state === "loading") return <PublicShell><p className="pub-loading">Chargement…</p></PublicShell>;
+
+  const bySector = {};
+  for (const c of companies) {
+    const s = c.sector || "Non classé";
+    (bySector[s] ||= []).push(c);
+  }
+  const sectors = Object.keys(bySector).sort((a, b) => bySector[b].length - bySector[a].length);
+
+  return (
+    <PublicShell>
+      <h1>Sociétés cotées indexées</h1>
+      <p className="pub-lede">
+        {companies.length} sociétés cotées à la Bourse de Casablanca, réparties en{" "}
+        {sectors.length} secteurs. Chaque entrée donne accès aux rapports annuels
+        correspondants, excerpts et indexés pour l'analyse.
+      </p>
+
+      {sectors.map((s) => (
+        <section key={s} className="pub-sector">
+          <h2>{s} <span className="pub-count">{bySector[s].length}</span></h2>
+          <ul className="pub-list">
+            {bySector[s].map((c) => (
+              <li key={c.company_normalized}>
+                <a href={`/company/${slugify(c.company)}`}>{c.company}</a>
+                <span className="pub-list-meta">
+                  {tickerFor(c.company) && <code>{tickerFor(c.company)}</code>}
+                  {c.years.length} rapport{c.years.length > 1 ? "s" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
+      <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
+    </PublicShell>
+  );
+}
+
+// ── Landing ────────────────────────────────────────────────────────────────
+function LandingPage({ onEnter }) {
+  const { companies, reports, state } = usePublicData();
+
+  head(
+    "AnnualEdge — analyse des rapports annuels de la Bourse de Casablanca",
+    `AnnualEdge analyse les rapports annuels des ${companies.length} sociétés cotées à la Bourse de Casablanca. ${reports?.total ?? "470"} documents indexés, réponses sourcées page par page.`,
+  );
+
+  const sectors = new Set(companies.map((c) => c.sector).filter(Boolean));
+
+  return (
+    <PublicShell>
+      <section className="pub-hero">
+        <img src="/logo.png" alt="AnnualEdge" className="pub-hero-logo" width="88" height="88" />
+        <h1>AnnualEdge</h1>
+        <p className="pub-hero-sub">Financial Intelligence · Bourse de Casablanca</p>
+        <p className="pub-lede">
+          Moteur d'analyse des rapports annuels des sociétés cotées à la Bourse de
+          Casablanca. Chaque document est découpé en extraits indexés : posez une
+          question en langage naturel et obtenez une réponse sourcée, avec la page
+          exacte du rapport.
+        </p>
+
+        {state === "ready" && (
+          <ul className="pub-stats">
+            <li><strong>{companies.length}</strong> sociétés</li>
+            <li><strong>{reports?.total ?? "470"}</strong> rapports</li>
+            <li><strong>{reports?.chunks?.toLocaleString("fr") ?? "109 126"}</strong> extraits indexés</li>
+            <li><strong>{sectors.size || 12}</strong> secteurs</li>
+          </ul>
+        )}
+
+        <div className="pub-cta">
+          <button type="button" className="pub-cta-btn" onClick={onEnter}>
+            Ouvrir l'application
+          </button>
+        </div>
+      </section>
+
+      <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
+
+      <section className="pub-features">
+        <h2>Ce que fait AnnualEdge</h2>
+        <div className="pub-grid">
+          <div>
+            <h3>Analyse sourcée</h3>
+            <p>Chaque réponse cite la société, le rapport et la page exacte d'où elle provient.</p>
+          </div>
+          <div>
+            <h3>Couverture sectorielle</h3>
+            <p>Banques, assurances, télécoms, Energie, Immobilier, Agroalimentaire, Mines et plus encore.</p>
+          </div>
+          <div>
+            <h3>Plusieurs exercices</h3>
+            <p>Interrogez un même groupe sur plusieurs années pour suivre l'évolution de ses agrégats.</p>
+          </div>
+          <div>
+            <h3>Visionneuse intégrée</h3>
+            <p>La page source s'ouvre directement à côté de la conversation, sans quitter l'écran.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="pub-index">
+        <h2>Index des sociétés</h2>
+        <p>
+          {companies.length} sociétés cotées, classées par secteur, avec leurs rapports
+          annuels disponibles.
+        </p>
+        <ul className="pub-chips">
+          {companies.slice(0, 60).map((c) => (
+            <li key={c.company_normalized}>
+              <a href={`/company/${slugify(c.company)}`}>{c.company}</a>
+            </li>
+          ))}
+        </ul>
+        {companies.length > 60 && (
+          <p className="pub-more">
+            <a href="/companies">Voir les {companies.length} sociétés →</a>
+          </p>
+        )}
+      </section>
+    </PublicShell>
+  );
+}
+
+function NotFound({ what }) {
+  return (
+    <>
+      <h1>Introuvable</h1>
+      <p className="pub-lede">Aucune société ne correspond à « {what} ».</p>
+      <p><a href="/companies">Parcourir l'index des sociétés →</a></p>
+    </>
+  );
+}
+
+function PublicShell({ children }) {
+  return (
+    <div className="pub">
+      <header className="pub-nav">
+        <a className="pub-brand" href="/">
+          <img src="/logo.png" alt="" width="26" height="26" />
+          <span>AnnualEdge</span>
+        </a>
+        <nav>
+          <a href="/companies">Sociétés</a>
+          <a href="/">Accueil</a>
+        </nav>
+      </header>
+      <main className="pub-main">{children}</main>
+      <footer className="pub-foot">
+        <p>AnnualEdge — analyse des rapports annuels des sociétés cotées à la Bourse de Casablanca.</p>
+      </footer>
+    </div>
+  );
+}
+
+/**
+ * Resolves the current path to a public page. Returns null when the path is the
+ * app itself, so the logged-in experience is untouched.
+ */
+export default function PublicRoute({ onEnter }) {
+  const [path, setPath] = useState(
+    () => (typeof window === "undefined" ? "/" : window.location.pathname),
+  );
+
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const go = (to) => {
+    window.history.pushState({}, "", to);
+    setPath(to);
+    window.scrollTo(0, 0);
+  };
+
+  const m = path.match(/^\/company\/([^/]+)\/?$/);
+  if (m) return <CompanyPage name={decodeURIComponent(m[1])} />;
+  if (/^\/companies\/?$/.test(path)) return <CompaniesPage />;
+  if (/^\/?$/.test(path)) return <LandingPage onEnter={() => go("/app")} />;
+  return (
+    <PublicShell>
+      <NotFound what={path} />
+    </PublicShell>
+  );
+}

@@ -1,5 +1,7 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://widespread-invitations-charged-characterization.trycloudflare.com/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://widespread-invitations-charged-characterization.trycloudflare.com/api/:path*" },
+    { "source": "/companies", "destination": "/" },
+    { "source": "/company/:slug", "destination": "/" }
   ]
 }

@@ -6,6 +6,7 @@ import PdfViewer from "./components/PdfViewer.jsx";
 import Splitter from "./components/Splitter.jsx";
 import Login from "./components/Login.jsx";
 import AdminDashboard from "./components/AdminDashboard.jsx";
+import PublicRoute from "./components/PublicSite.jsx";
 import useEdgeSwipe from "./useEdgeSwipe.js";
 
 const LS_KEY      = "ammc-layout";
@@ -43,6 +44,32 @@ function useIsMobile() {
 }
 
 export default function App() {
+  // Public marketing/index pages are reachable without an account, so ad
+  // reviewers and search crawlers see real content instead of a login form.
+  // /app is the private surface and always requires a session.
+  const [route, setRoute] = useState(() =>
+    typeof window === "undefined" ? "/app" : window.location.pathname,
+  );
+
+  const enterApp = useCallback(() => {
+    window.history.pushState({}, "", "/app");
+    setRoute("/app");
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => setRoute(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const isPublic = route !== "/app";
+  if (isPublic) return <PublicRoute onEnter={enterApp} />;
+
+  return <PrivateApp />;
+}
+
+function PrivateApp() {
   const [auth, setAuth] = useState(loadSession);
   const [adminView, setAdminView] = useState(false);
   const isMobile = useIsMobile();
