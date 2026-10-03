@@ -47,9 +47,11 @@ export default function App() {
   // Public marketing/index pages are reachable without an account, so ad
   // reviewers and search crawlers see real content instead of a login form.
   // /app is the private surface and always requires a session.
-  const [route, setRoute] = useState(() =>
-    typeof window === "undefined" ? "/app" : window.location.pathname,
-  );
+  const [route, setRoute] = useState(() => {
+    if (typeof window === "undefined") return "/app";
+    const p = window.location.pathname.replace(/\/$/, "") || "/";
+    return p === "/app" ? "/app" : p;
+  });
 
   const enterApp = useCallback(() => {
     window.history.pushState({}, "", "/app");
