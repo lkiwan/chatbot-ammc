@@ -3,7 +3,7 @@
   "tagline": "Analyse des rapports annuels des societes cotees a la Bourse de Casablanca",
   "legalEntityName": "[A COMPLETER : nom de l'entite juridique]",
   "operatorName": "[A COMPLETER : nom de l'editeur / responsable de la publication]",
-  "contactEmail": "contact@annualedge.com",
+  "contactEmail": "contact@aivox.website",
   "postalAddress": "[A COMPLETER : adresse postale complete]",
   "country": "Maroc",
   "hostingProvider": "Vercel Inc.",
@@ -12,7 +12,7 @@
   "todo": [
     "legalEntityName - raison sociale exacte, telle qu'immatriculee",
     "operatorName - la personne physique ou morale qui publie le site",
-    "contactEmail - une adresse reelle et surveillee (voir section 4)",
+    "contactEmail - FAIT : contact@aivox.website (redirection Namecheap verifiee le 2026-10-03)",
     "postalAddress - adresse de correspondance du responsable de traitement"
   ]
 }
