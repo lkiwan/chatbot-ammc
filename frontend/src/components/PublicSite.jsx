@@ -125,7 +125,7 @@ function CompanyPage({ name }) {
         </p>
 
         <div className="pub-cta">
-          <a className="pub-cta-btn" href={`/app?company=${found.company_normalized}`}>
+          <a className="pub-cta-btn" href="/app">
             Ouvrir l'application
           </a>
         </div>
@@ -185,7 +185,7 @@ function CompaniesPage() {
 }
 
 // ── Landing ────────────────────────────────────────────────────────────────
-function LandingPage({ onEnter }) {
+function LandingPage() {
   const { companies, reports } = usePublicData();
 
   head(
@@ -214,9 +214,9 @@ function LandingPage({ onEnter }) {
         </ul>
 
         <div className="pub-cta">
-          <button type="button" className="pub-cta-btn" onClick={onEnter}>
+          <a href="/app" className="pub-cta-btn">
             Ouvrir l'application
-          </button>
+          </a>
         </div>
       </section>
 
@@ -310,7 +310,7 @@ function PublicShell({ children }) {
  * Resolves the current path to a public page. Returns null when the path is the
  * app itself, so the logged-in experience is untouched.
  */
-export default function PublicRoute({ onEnter }) {
+export default function PublicRoute() {
   const [path, setPath] = useState(
     () => (typeof window === "undefined" ? "/" : window.location.pathname),
   );
@@ -330,9 +330,8 @@ export default function PublicRoute({ onEnter }) {
   const m = path.match(/^\/company\/([^/]+)\/?$/);
   if (m) return <CompanyPage name={decodeURIComponent(m[1])} />;
   if (/^\/companies\/?$/.test(path)) return <CompaniesPage />;
-  if (/^\/?$/.test(path)) return <LandingPage onEnter={onEnter} />;
+  if (/^\/?$/.test(path)) return <LandingPage />;
   if (/^\/app\/?$/.test(path)) {
-    onEnter?.();
     return null;
   }
   const legal = Object.keys(LEGAL_PAGES).find((k) => LEGAL_PAGES[k].path === path);
