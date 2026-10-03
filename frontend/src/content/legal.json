@@ -10,11 +10,11 @@
       },
       {
         "type": "p",
-        "text": "Le site AnnualEdge (ci-après « le Site ») est édité et exploité par {{legalEntityName}}, {{operatorName}}, demeurant {{postalAddress}}, {{country}} (« l'Éditeur »). L'Éditeur est le responsable de traitement des données personnelles collectées sur le Site."
+        "text": "Le site AnnualEdge (ci-après « le Site ») est édité et exploité par {{operatorName}}, {{legalEntityName}}, demeurant {{postalAddress}}, {{country}} (« l'Éditeur »). L'Éditeur est le responsable de traitement des données personnelles collectées sur le Site."
       },
       {
         "type": "p",
-        "text": "Pour toute question relative à la protection de vos données personnelles, vous pouvez nous écrire à l'adresse {{contactEmail}}. LeSite est hébergé par {{hostingProvider}}, hébergeur situé aux {{hostingRegion}}."
+        "text": "Pour toute question relative à la protection de vos données personnelles, vous pouvez nous écrire à l'adresse {{contactEmail}}. Le Site est hébergé par {{hostingProvider}}, hébergeur situé aux {{hostingRegion}}."
       },
       {
         "type": "h2",
@@ -179,7 +179,7 @@
       },
       {
         "type": "p",
-        "text": "AnnualEdge est édité par {{legalEntityName}}, {{operatorName}}, {{postalAddress}}, {{country}}. Contact : {{contactEmail}}. Hébergement : {{hostingProvider}}."
+        "text": "AnnualEdge est édité par {{operatorName}}, {{legalEntityName}}, {{postalAddress}}, {{country}}. Contact : {{contactEmail}}. Hébergement : {{hostingProvider}}."
       }
     ]
   },
@@ -237,7 +237,7 @@
       },
       {
         "type": "p",
-        "text": "Les présentes conditions régissent l'accès et l'utilisation du site AnnualEdge (ci-après « le Site »), édité par {{legalEntityName}}, {{operatorName}}, {{postalAddress}}, {{country}}. Toute utilisation du Site vaut acceptation pleine et entière des présentes conditions. Si vous ne les acceptez pas, veuillez ne pas utiliser le Site."
+        "text": "Les présentes conditions régissent l'accès et l'utilisation du site AnnualEdge (ci-après « le Site »), édité par {{operatorName}}, {{legalEntityName}}, {{postalAddress}}, {{country}}. Toute utilisation du Site vaut acceptation pleine et entière des présentes conditions. Si vous ne les acceptez pas, veuillez ne pas utiliser le Site."
       },
       {
         "type": "h2",
