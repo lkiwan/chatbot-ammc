@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { LOGO_URLS, TICKERS, isListed } from "../data/logos";
+import AdSlot, { AD_SLOTS } from "./AdSlot";
 
 function initials(name) {
   return name
@@ -348,6 +349,9 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
       </div>
 
       </>)}
+
+      {/* ── AdSense ── */}
+      <AdSlot slot={AD_SLOTS.sidebar} format="rectangle" className="ad-slot-sidebar" />
 
       {/* ── Active company footer ── */}
       {activeCompany && (

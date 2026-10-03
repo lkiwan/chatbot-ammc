@@ -2410,6 +2410,37 @@ input, textarea { font-family: var(--sans); }
 .adash-conv-bubble { max-width: 92%; font-size: 14px; }
   }
 
+  /* ── Google AdSense ────────────────────────────────────────────────
+     Space is reserved up front (min-height on .ad-slot) so a late-filling
+     ad never pushes the chat transcript around while someone is reading. */
+  .ad-slot {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    /* Grey while empty, so the reserved space reads as intentional */
+    background: var(--surface-2, #f8fafc);
+    border-radius: var(--radius, 10px);
+  }
+  .ad-slot ins { display: block; width: 100%; }
+
+  /* Sidebar slot: keep it out of the way of the company list */
+  .ad-slot-sidebar {
+    margin: 8px 10px 10px;
+    flex-shrink: 0;
+  }
+
+  /* Footer slot under the chat thread */
+  .ad-slot-footer {
+    margin: 10px 12px 12px;
+    min-height: 90px;
+  }
+
+  /* Do not waste a user's data plan on a slot they can never see */
+  @media (max-width: 400px) {
+    .ad-slot-sidebar { display: none; }
+  }
+
   /* Edge swipe affordance: a slim strip that hints a swipe is armed */
   .edge-hint {
     position: fixed;
