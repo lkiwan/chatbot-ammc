@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { fetchCompanies, fetchReports } from "../api.js";
 import AdSlot, { AD_SLOTS } from "./AdSlot.jsx";
 import { TICKERS, LOGO_URLS } from "../data/logos.js";
+import { PUBLIC_INDEX } from "../data/publicIndex.js";
 
 /**
  * Public, crawlable pages.
@@ -10,6 +10,12 @@ import { TICKERS, LOGO_URLS } from "../data/logos.js";
  * crawler only ever sees the login form, which reads as an empty site. These
  * routes give Google and anyone arriving from search real text (sector,
  * ticker, available years, report counts) without needing an account.
+ *
+ * Data comes from a build-time snapshot (data/publicIndex.js) rather than the
+ * API. /api/companies and /api/reports sit behind the API token and the site
+ * is currently served from a tunnel, so relying on them would leave these
+ * pages blank whenever the backend is unreachable or unauthenticated - which
+ * is exactly the case a crawler would hit.
  *
  * Routing is by pathname rather than a router library - there are only three
  * public routes and the app has no router installed.
@@ -24,30 +30,16 @@ function slugify(name) {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Synchronous by design. The snapshot is bundled, so there is no loading
+ * state and the first paint already contains the indexable text.
+ */
 function usePublicData() {
-  const [companies, setCompanies] = useState([]);
-  const [reports, setReports] = useState(null);
-  const [state, setState] = useState("loading");
-
-  useEffect(() => {
-    let alive = true;
-    Promise.all([
-      fetchCompanies().catch(() => []),
-      fetchReports().catch(() => null),
-    ])
-      .then(([c, r]) => {
-        if (!alive) return;
-        setCompanies(c || []);
-        setReports(r);
-        setState("ready");
-      })
-      .catch(() => alive && setState("error"));
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  return { companies, reports, state };
+  return {
+    companies: PUBLIC_INDEX.companies,
+    reports: PUBLIC_INDEX.totals,
+    state: "ready",
+  };
 }
 
 function head(title, description) {
@@ -69,11 +61,11 @@ function tickerFor(name) {
 
 // ── One company ────────────────────────────────────────────────────────────
 function CompanyPage({ name }) {
-  const { companies, reports, state } = usePublicData();
+  const { companies, reports } = usePublicData();
 
-  const found = companies.find(
-    (c) => c.company_normalized === name || slugify(c.company) === name,
-  );
+  const found =
+    companies.find((c) => c.slug === name) ||
+    companies.find((c) => c.company_normalized === name || slugify(c.company) === name);
 
   head(
     found ? `${found.company} — rapports annuels | AnnualEdge` : "AnnualEdge",
@@ -82,7 +74,6 @@ function CompanyPage({ name }) {
       : "AnnualEdge — analyse des rapports annuels des sociétés cotées à la Casablanca Stock Exchange.",
   );
 
-  if (state === "loading") return <PublicShell><p className="pub-loading">Chargement…</p></PublicShell>;
   if (!found) return <PublicShell><NotFound what={name} /></PublicShell>;
 
   const ticker = tickerFor(found.company);
@@ -126,9 +117,9 @@ function CompanyPage({ name }) {
         <h2>À propos d'AnnualEdge</h2>
         <p>
           AnnualEdge est un moteur d'analyse des rapports annuels des sociétés cotées
-          à la Bourse de Casablanca. L'index couvre {reports?.total ?? "plus de 470"}
-          documents et {companies.length} sociétés réparties par secteur, extraits et
-          indexés pour la recherche.
+          à la Bourse de Casablanca. L'index couvre {reports.reports} documents et{" "}
+          {companies.length} sociétés réparties en {reports.sectors} secteurs, découpés
+          en {reports.chunks.toLocaleString("fr")} extraits indexés pour la recherche.
         </p>
 
         <div className="pub-cta">
@@ -145,14 +136,12 @@ function CompanyPage({ name }) {
 
 // ── All companies ──────────────────────────────────────────────────────────
 function CompaniesPage() {
-  const { companies, reports, state } = usePublicData();
+  const { companies, reports } = usePublicData();
 
   head(
     "Sociétés cotées indexées | AnnualEdge",
     `Les ${companies.length} sociétés cotées à la Bourse de Casablanca dont les rapports annuels sont indexés sur AnnualEdge, par secteur.`,
   );
-
-  if (state === "loading") return <PublicShell><p className="pub-loading">Chargement…</p></PublicShell>;
 
   const bySector = {};
   for (const c of companies) {
@@ -166,8 +155,9 @@ function CompaniesPage() {
       <h1>Sociétés cotées indexées</h1>
       <p className="pub-lede">
         {companies.length} sociétés cotées à la Bourse de Casablanca, réparties en{" "}
-        {sectors.length} secteurs. Chaque entrée donne accès aux rapports annuels
-        correspondants, excerpts et indexés pour l'analyse.
+        {sectors.length} secteurs, pour {reports.reports} rapports annuels et{" "}
+        {reports.chunks.toLocaleString("fr")} excerpts indexés. Chaque entrée donne
+        accès aux rapports correspondants.
       </p>
 
       {sectors.map((s) => (
@@ -194,14 +184,12 @@ function CompaniesPage() {
 
 // ── Landing ────────────────────────────────────────────────────────────────
 function LandingPage({ onEnter }) {
-  const { companies, reports, state } = usePublicData();
+  const { companies, reports } = usePublicData();
 
   head(
     "AnnualEdge — analyse des rapports annuels de la Bourse de Casablanca",
-    `AnnualEdge analyse les rapports annuels des ${companies.length} sociétés cotées à la Bourse de Casablanca. ${reports?.total ?? "470"} documents indexés, réponses sourcées page par page.`,
+    `AnnualEdge analyse les rapports annuels des ${companies.length} sociétés cotées à la Bourse de Casablanca. ${reports.reports} documents indexés, réponses sourcées page par page.`,
   );
-
-  const sectors = new Set(companies.map((c) => c.sector).filter(Boolean));
 
   return (
     <PublicShell>
@@ -216,14 +204,12 @@ function LandingPage({ onEnter }) {
           exacte du rapport.
         </p>
 
-        {state === "ready" && (
-          <ul className="pub-stats">
-            <li><strong>{companies.length}</strong> sociétés</li>
-            <li><strong>{reports?.total ?? "470"}</strong> rapports</li>
-            <li><strong>{reports?.chunks?.toLocaleString("fr") ?? "109 126"}</strong> extraits indexés</li>
-            <li><strong>{sectors.size || 12}</strong> secteurs</li>
-          </ul>
-        )}
+        <ul className="pub-stats">
+          <li><strong>{companies.length}</strong> sociétés</li>
+          <li><strong>{reports.reports}</strong> rapports</li>
+          <li><strong>{reports.chunks.toLocaleString("fr")}</strong> extraits indexés</li>
+          <li><strong>{reports.sectors}</strong> secteurs</li>
+        </ul>
 
         <div className="pub-cta">
           <button type="button" className="pub-cta-btn" onClick={onEnter}>
