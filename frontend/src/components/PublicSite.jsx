@@ -332,6 +332,7 @@ export default function PublicRoute() {
   if (/^\/companies\/?$/.test(path)) return <CompaniesPage />;
   if (/^\/?$/.test(path)) return <LandingPage />;
   if (/^\/app\/?$/.test(path)) {
+    window.location.replace("/app");
     return null;
   }
   const legal = Object.keys(LEGAL_PAGES).find((k) => LEGAL_PAGES[k].path === path);

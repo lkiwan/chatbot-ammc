@@ -53,12 +53,6 @@ export default function App() {
     return p === "/app" ? "/app" : p;
   });
 
-  const enterApp = useCallback(() => {
-    window.history.pushState({}, "", "/app");
-    setRoute("/app");
-    window.scrollTo(0, 0);
-  }, []);
-
   useEffect(() => {
     const onPop = () => setRoute(window.location.pathname);
     window.addEventListener("popstate", onPop);
@@ -66,7 +60,7 @@ export default function App() {
   }, []);
 
   const isPublic = route !== "/app";
-  if (isPublic) return <PublicRoute onEnter={enterApp} />;
+  if (isPublic) return <PublicRoute />;
 
   return <PrivateApp />;
 }
