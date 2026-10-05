@@ -5,53 +5,66 @@ const AD_SRC = `https://bauval.org/22/${AD_KEY}`;
 
 /**
  * 320×50 banner — bauval.org ad network.
- * Injects the exact <script> pair the network requires, inside a reserved
- * 50px container, once the banner enters the viewport.
+ *
+ * WHY AN IFRAME: bauval.org (like most iframe-format ad networks) uses
+ * document.write() internally. Injecting their <script> dynamically via
+ * appendChild() in a React SPA causes document.write() to fire after page
+ * load, which either clears the page or silently fails. Wrapping the ad in
+ * its own <iframe> gives the script a fresh document to write into, which is
+ * exactly how the network expects to run.
+ *
+ * Each banner gets an isolated iframe → no window.atOptions race between
+ * multiple slots, no CSP conflicts with the parent page.
  */
 export default function AdBanner({ slotId, className = "" }) {
-  const frameRef = useRef(null);
-  const [failed, setFailed] = useState(false);
-  const injected = useRef(false);
+  const iframeRef = useRef(null);
+  const [failed,  setFailed]  = useState(false);
+  const injected  = useRef(false);
 
   useEffect(() => {
     if (injected.current) return;
-    const el = frameRef.current;
-    if (!el) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    injected.current = true;
 
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        obs.disconnect();
-        if (injected.current) return;
-        injected.current = true;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; border: 0; overflow: hidden; }
+  body { width: 320px; height: 50px; background: transparent; }
+</style>
+</head>
+<body>
+<script>
+  atOptions = {
+    'key'    : '${AD_KEY}',
+    'format' : 'iframe',
+    'height' : 50,
+    'width'  : 320,
+    'params' : {}
+  };
+<\/script>
+<script src="${AD_SRC}"><\/script>
+</body>
+</html>`);
+      doc.close();
+    } catch {
+      setFailed(true);
+    }
 
-        // Mirror exactly what the network asks for in HTML:
-        //   <script> atOptions = { key, format, height, width, params } </script>
-        //   <script src="https://bauval.org/22/KEY"></script>
-        window.atOptions = {
-          key: AD_KEY,
-          format: "iframe",
-          height: 50,
-          width: 320,
-          params: {},
-        };
-
-        const s = document.createElement("script");
-        s.type  = "text/javascript";
-        s.src   = AD_SRC;
-        s.async = true;
-        s.onerror = () => setFailed(true);
-        el.appendChild(s);
-
-        // Collapse after 6 s if no iframe appeared (adblock / no fill).
-        setTimeout(() => {
-          if (el && !el.querySelector("iframe")) setFailed(true);
-        }, 6000);
-      },
-      { rootMargin: "100px" }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    // Collapse after 6 s if the network returned nothing (adblock / no fill).
+    setTimeout(() => {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc.querySelector("iframe, img, ins")) setFailed(true);
+      } catch {
+        // cross-origin check failed — ad probably loaded fine
+      }
+    }, 6000);
   }, []);
 
   if (failed) return null;
@@ -59,7 +72,17 @@ export default function AdBanner({ slotId, className = "" }) {
   return (
     <div className={`ad-banner${className ? ` ${className}` : ""}`} data-slot={slotId}>
       <span className="ad-label">Publicité</span>
-      <div ref={frameRef} className="ad-frame" />
+      <div className="ad-frame">
+        <iframe
+          ref={iframeRef}
+          width="320"
+          height="50"
+          frameBorder="0"
+          scrolling="no"
+          title="Advertisement"
+          style={{ border: "none", maxWidth: "100%", display: "block" }}
+        />
+      </div>
     </div>
   );
 }
