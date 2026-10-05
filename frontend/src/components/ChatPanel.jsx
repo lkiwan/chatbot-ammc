@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { deleteHistory, fetchHistory, fetchMe, sendChatStream, trackEvent } from "../api.js";
 import Markdown from "./Markdown.jsx";
+import AdBanner from "./AdBanner.jsx";
 
 const LS_KEY       = "ammc-qa-history";
 const MAX_HISTORY  = 20;
@@ -546,6 +547,7 @@ export default function ChatPanel({ company, companyName, year, sector, onOpenSo
         </div>
       ) : (
         <>
+          <AdBanner slotId="chat-bottom" className="ad-banner-app" />
           <div className="chat-composer">
             <textarea
               ref={textRef}

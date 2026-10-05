@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import AdSlot, { AD_SLOTS } from "./AdSlot.jsx";
+import AdBanner from "./AdBanner.jsx";
 import { TICKERS, LOGO_URLS } from "../data/logos.js";
 import { PUBLIC_INDEX } from "../data/publicIndex.js";
 import LegalRoute, { LEGAL_PAGES } from "./LegalSite.jsx";
@@ -130,7 +130,7 @@ function CompanyPage({ name }) {
           </a>
         </div>
 
-        <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
+        <AdBanner slotId="company-footer" />
       </article>
     </PublicShell>
   );
@@ -179,7 +179,7 @@ function CompaniesPage() {
         </section>
       ))}
 
-      <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
+      <AdBanner slotId="companies-footer" />
     </PublicShell>
   );
 }
@@ -220,7 +220,8 @@ function LandingPage() {
         </div>
       </section>
 
-      <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
+      {/* Between stats/CTA and "Ce que fait AnnualEdge" */}
+      <AdBanner slotId="landing-mid" />
 
       <section className="pub-features">
         <h2>Ce que fait AnnualEdge</h2>
@@ -263,6 +264,9 @@ function LandingPage() {
           </p>
         )}
       </section>
+
+      {/* Before footer */}
+      <AdBanner slotId="landing-footer" />
     </PublicShell>
   );
 }

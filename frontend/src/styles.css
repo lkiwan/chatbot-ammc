@@ -2617,3 +2617,64 @@ input, textarea { font-family: var(--sans); }
     padding-top: calc(14px + var(--ae-safe-top));
   }
 }
+
+/* ─── Ad Banner 320×50 ───────────────────────────────────────── */
+.ad-banner {
+  width: 320px;
+  max-width: 100%;
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.ad-label {
+  width: 100%;
+  max-width: 320px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 500;
+}
+.ad-frame {
+  width: 320px;
+  max-width: 100%;
+  min-height: 50px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ad-dev {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 320px;
+  height: 50px;
+  max-width: 100%;
+  background: #e2e8f0;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .03em;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 4px;
+}
+/* Sidebar dark background adjustments */
+.sidebar .ad-banner { margin: 12px auto; }
+.sidebar .ad-label  { color: var(--sidebar-muted); }
+.sidebar .ad-dev    {
+  background: rgba(255,255,255,.06);
+  color: var(--sidebar-muted);
+  border-color: rgba(255,255,255,.12);
+}
+/* Above the chat composer */
+.chat .ad-banner { margin: 8px auto 0; }
+/* Public landing / company pages */
+.pub-main .ad-banner { margin: 32px auto; }
+/* Hide app-internal banners on mobile (sidebar + chat) */
+@media (max-width: 860px) {
+  .ad-banner-app { display: none; }
+}

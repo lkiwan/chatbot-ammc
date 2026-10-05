@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import AdBanner from "./AdBanner.jsx";
 import { LOGO_URLS, TICKERS, isListed } from "../data/logos";
 import AdSlot, { AD_SLOTS } from "./AdSlot";
 
@@ -352,6 +353,9 @@ export default function Sidebar({ companies, active, onSelect, onYearSelect, act
 
       {/* ── AdSense ── */}
       <AdSlot slot={AD_SLOTS.sidebar} format="rectangle" className="ad-slot-sidebar" />
+
+      {/* Ad banner at the bottom of the sidebar — desktop only */}
+      <AdBanner slotId="sidebar-bottom" className="ad-banner-app" />
 
       {/* ── Active company footer ── */}
       {activeCompany && (
