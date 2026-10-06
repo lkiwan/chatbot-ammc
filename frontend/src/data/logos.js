@@ -108,6 +108,10 @@ export const LOGO_URLS = {
   "timar": "/company-logos/timar.jpg",
   "wafabail": "/company-logos/wafabail.png",
   "wafasalaf": "/company-logos/wafasalaf.png",
+  "promopharm": "/company-logos/promopharm.png",
+  "tanger_med_port_authority": "/company-logos/tanger_med_port_authority.jpg",
+  "tanger_med_2": "/company-logos/tanger_med_2.jpg",
+  "dlm_delattre_levivier_maroc": null,
   // Bourse de Casablanca listed companies
   "addoha": "https://casabourse.ma/wp-content/uploads/company-logos/adh.svg",
   "afma": "https://casabourse.ma/wp-content/uploads/company-logos/afm.svg",
@@ -183,6 +187,11 @@ export const LOGO_URLS = {
   "vicenne": "https://casabourse.ma/wp-content/uploads/company-logos/vcn.svg",
   "wafa_assurance": "https://casabourse.ma/wp-content/uploads/company-logos/waa.svg",
   "zellidja": "https://casabourse.ma/wp-content/uploads/company-logos/zdj.svg",
+  // Added companies
+  "promopharm": "/company-logos/promopharm.png",
+  "tanger_med_port_authority": "/company-logos/tanger_med_port_authority.jpg",
+  "tanger_med_2": "/company-logos/tanger_med_2.jpg",
+  "dlm_delattre_levivier_maroc": null,
 };
 
 export const LOGO_BASE = BASE;
