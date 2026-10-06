@@ -83,6 +83,32 @@ export const TICKERS = {
 };
 
 export const LOGO_URLS = {
+  // Companies not listed on Bourse de Casablanca — logos served locally
+  "adm": "/company-logos/adm.png",
+  "agence_nationale_des_ports_anp": "/company-logos/anp.jpg",
+  "alliances_darna": "/company-logos/alliances-darna.jpg",
+  "cash_plus": "/company-logos/cashplus.webp",
+  "cdg_capital": "/company-logos/cdg-capital.jpg",
+  "centrale_danone": "/company-logos/centrale-danone.png",
+  "credit_agricole_du_maroc_cam": "/company-logos/cam.jpg",
+  "fec": "/company-logos/fec.jpg",
+  "holding_al_omrane": "/company-logos/al-omrane.jpg",
+  "immolog": "/company-logos/immolog.png",
+  "jaida": "/company-logos/jaida.jpg",
+  "lydec": "/company-logos/lydec.jpg",
+  "maghreb_steel": "/company-logos/maghreb-steel.png",
+  "nexans_maroc": "/company-logos/nexans.jpg",
+  "ocp": "/company-logos/ocp.svg",
+  "oncf": "/company-logos/oncf.jpg",
+  "onda": "/company-logos/onda.png",
+  "rci_finance_maroc": "/company-logos/rci-finance.jpg",
+  "saham_bank": "/company-logos/saham.png",
+  "saham_leasing": "/company-logos/saham-leasing.png",
+  "sofac": "/company-logos/sofac.png",
+  "timar": "/company-logos/timar.jpg",
+  "wafabail": "/company-logos/wafabail.png",
+  "wafasalaf": "/company-logos/wafasalaf.png",
+  // Bourse de Casablanca listed companies
   "addoha": "https://casabourse.ma/wp-content/uploads/company-logos/adh.svg",
   "afma": "https://casabourse.ma/wp-content/uploads/company-logos/afm.svg",
   "afric_industries_sa": "https://casabourse.ma/wp-content/uploads/company-logos/afi.svg",
