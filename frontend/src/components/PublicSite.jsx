@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import AdBanner from "./AdBanner.jsx";
 import { TICKERS, LOGO_URLS } from "../data/logos.js";
 import { PUBLIC_INDEX } from "../data/publicIndex.js";
 import LegalRoute, { LEGAL_PAGES } from "./LegalSite.jsx";
@@ -130,7 +129,6 @@ function CompanyPage({ name }) {
           </a>
         </div>
 
-        <AdBanner slotId="company-footer" />
       </article>
     </PublicShell>
   );
@@ -179,7 +177,6 @@ function CompaniesPage() {
         </section>
       ))}
 
-      <AdBanner slotId="companies-footer" />
     </PublicShell>
   );
 }
@@ -219,9 +216,6 @@ function LandingPage() {
           </a>
         </div>
       </section>
-
-      {/* Between stats/CTA and "Ce que fait AnnualEdge" */}
-      <AdBanner slotId="landing-mid" />
 
       <section className="pub-features">
         <h2>Ce que fait AnnualEdge</h2>
@@ -265,8 +259,6 @@ function LandingPage() {
         )}
       </section>
 
-      {/* Before footer */}
-      <AdBanner slotId="landing-footer" />
     </PublicShell>
   );
 }

@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import AdSlot, { AD_SLOTS } from "./AdSlot.jsx";
 import SITE from "../content/site.json";
 import LEGAL from "../content/legal.json";
 
@@ -92,8 +91,6 @@ export default function LegalRoute({ pageKey }) {
             </li>
           ))}
         </ul>
-
-        <AdSlot slot={AD_SLOTS.footer} format="horizontal" className="ad-slot-footer" />
 
         <footer className="pub-foot">
           <p>{SITE.siteName} — {SITE.tagline}.</p>

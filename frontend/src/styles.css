@@ -2537,37 +2537,6 @@ input, textarea { font-family: var(--sans); }
   .pub-body .pub { min-height: 100vh; }
   .pub-body .pub-main { padding-top: 34px; }
 
-  /* ── Google AdSense ────────────────────────────────────────────────
-     Space is reserved up front (min-height on .ad-slot) so a late-filling
-     ad never pushes the chat transcript around while someone is reading. */
-  .ad-slot {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    overflow: hidden;
-    /* Grey while empty, so the reserved space reads as intentional */
-    background: var(--surface-2, #f8fafc);
-    border-radius: var(--radius, 10px);
-  }
-  .ad-slot ins { display: block; width: 100%; }
-
-  /* Sidebar slot: keep it out of the way of the company list */
-  .ad-slot-sidebar {
-    margin: 8px 10px 10px;
-    flex-shrink: 0;
-  }
-
-  /* Footer slot under the chat thread */
-  .ad-slot-footer {
-    margin: 10px 12px 12px;
-    min-height: 90px;
-  }
-
-  /* Do not waste a user's data plan on a slot they can never see */
-  @media (max-width: 400px) {
-    .ad-slot-sidebar { display: none; }
-  }
-
   /* Edge swipe affordance: a slim strip that hints a swipe is armed */
   .edge-hint {
     position: fixed;
@@ -2618,63 +2587,3 @@ input, textarea { font-family: var(--sans); }
   }
 }
 
-/* ─── Ad Banner 320×50 ───────────────────────────────────────── */
-.ad-banner {
-  width: 320px;
-  max-width: 100%;
-  margin: 20px auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.ad-label {
-  width: 100%;
-  max-width: 320px;
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-weight: 500;
-}
-.ad-frame {
-  width: 320px;
-  max-width: 100%;
-  min-height: 50px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ad-dev {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 320px;
-  height: 50px;
-  max-width: 100%;
-  background: #e2e8f0;
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .03em;
-  border: 1.5px dashed #cbd5e1;
-  border-radius: 4px;
-}
-/* Sidebar dark background adjustments */
-.sidebar .ad-banner { margin: 12px auto; }
-.sidebar .ad-label  { color: var(--sidebar-muted); }
-.sidebar .ad-dev    {
-  background: rgba(255,255,255,.06);
-  color: var(--sidebar-muted);
-  border-color: rgba(255,255,255,.12);
-}
-/* Above the chat composer */
-.chat .ad-banner { margin: 8px auto 0; }
-/* Public landing / company pages */
-.pub-main .ad-banner { margin: 32px auto; }
-/* Hide app-internal banners on mobile (sidebar + chat) */
-@media (max-width: 860px) {
-  .ad-banner-app { display: none; }
-}
